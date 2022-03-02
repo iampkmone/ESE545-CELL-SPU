@@ -1,4 +1,4 @@
-module RegisterTable(clk, reset);
+module RegisterTable(clk, reset, instr_even, instr_odd, format_even, format_odd, rt_even, ra_even, rb_even, rc_even, rt_odd, ra_odd, rb_odd, rc_odd);
 	input					clk, reset;
 	input [0:31]			instr_even, instr_odd;		//Instructions from decoder
 	input [2:0]				format_even, format_odd;	//Instruction formats, decoded
@@ -27,7 +27,11 @@ module RegisterTable(clk, reset);
 				rt_even = registers[instr_even[25:31]];
 				ra_even = registers[instr_even[18:24]];
 			end
-			3'b011 : begin								//RI10-type instr
+			3'b011 : begin								//RI8-type instr
+				rt_even = registers[instr_even[25:31]];
+				ra_even = registers[instr_even[18:24]];
+			end
+			3'b100 : begin								//RI10-type instr
 				rt_even = registers[instr_even[25:31]];
 				ra_even = registers[instr_even[18:24]];
 			end
