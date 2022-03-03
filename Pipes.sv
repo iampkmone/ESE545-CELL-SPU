@@ -22,7 +22,8 @@ module Pipes(clk, reset, instr_even, instr_odd);
 		.imm10(imm10_odd), .imm16(imm16_odd), .imm18(imm18_odd));
 		
 	//Decode logic (Note: Will be placed in decode/hazard unit in final submission)
-	always_comb begin										//RRR-type
+	always_comb begin
+															//Even decoding, RRR-type
 		if (instr_even[0:3] == 4'b1100) begin				//mpya
 			format_even = 1;
 			op_even = 4'b1100;
@@ -348,6 +349,123 @@ module Pipes(clk, reset, instr_even, instr_odd);
 						11'b00001111010 : begin			//rotmai
 							op_even = 11'b00001111010;
 							unit_even = 1;
+						end
+					endcase
+				end
+			end
+		end
+		
+															//odd decoding, RI10-type
+		if (instr_odd[0:7] == 8'b00110100) begin			//lqd
+			format_odd = 4;
+			op_odd = 4'b00110100;
+			unit_odd = 1;
+		end
+		else if (instr_odd[0:7] == 8'b00110100) begin		//stqd
+			format_odd = 4;
+			op_odd = 4'b00110100;
+			unit_odd = 1;
+		end
+		else begin
+			format_odd = 5;					//RI16-type
+			case(instr_odd[0:8])
+				9'b001100001 : begin		//lqa
+					op_odd = 9'b001100001;
+					unit_odd = 1;
+				end
+				9'b001000001 : begin		//stqa
+					op_odd = 9'b001000001;
+					unit_odd = 1;
+				end
+				9'b001100100 : begin		//br
+					op_odd = 9'b001100100;
+					unit_odd = 2;
+				end
+				9'b001100000 : begin		//bra
+					op_odd = 9'b001100000;
+					unit_odd = 2;
+				end
+				9'b001100110 : begin		//brsl
+					op_odd = 9'b001100110;
+					unit_odd = 2;
+				end
+				9'b001000010 : begin		//brnz
+					op_odd = 9'b001000010;
+					unit_odd = 2;
+				end
+				9'b001000000 : begin		//brz
+					op_odd = 9'b001000000;
+					unit_odd = 2;
+				end
+				default : format_odd = 7;
+			endcase
+			if (format_odd == 7) begin
+				format_odd = 0;					//RR-type
+				case(instr_odd[0:10])
+					11'b00111011011 : begin		//shlqbi
+						op_odd = 11'b00111011011;
+						unit_odd = 0;
+					end
+					11'b00111011111 : begin		//shlqby
+						op_odd = 11'b00111011111;
+						unit_odd = 0;
+					end
+					11'b00111011000 : begin		//rotqbi
+						op_odd = 11'b00111011000;
+						unit_odd = 0;
+					end
+					11'b00111011100 : begin		//rotqby
+						op_odd = 11'b00111011100;
+						unit_odd = 0;
+					end
+					11'b00110110010 : begin		//gbb
+						op_odd = 11'b00110110010;
+						unit_odd = 0;
+					end
+					11'b00110110001 : begin		//gbh
+						op_odd = 11'b00110110001;
+						unit_odd = 0;
+					end
+					11'b00110110000 : begin		//gb
+						op_odd = 11'b00110110000;
+						unit_odd = 0;
+					end
+					11'b00111000100 : begin		//lqx
+						op_odd = 11'b00111000100;
+						unit_odd = 1;
+					end
+					11'b00101000100 : begin		//stqx
+						op_odd = 11'b00101000100;
+						unit_odd = 1;
+					end
+					11'b00110101000 : begin		//bi
+						op_odd = 11'b00110101000;
+						unit_odd = 2;
+					end
+					11'b00000000001 : begin		//lnop
+						op_odd = 11'b00000000001;
+						unit_odd = 0;
+					end
+					default : format_odd = 7;
+				endcase
+				if (format_odd == 7) begin
+					format_odd = 2;					//RI7-type
+					case(instr_odd[0:10])
+						11'b00111111011 : begin		//shlqbii
+							op_odd = 11'b00111111011;
+							unit_odd = 0;
+						end
+						11'b00111111111 : begin		//shlqbyi
+							op_odd = 11'b00111111111;
+							unit_odd = 0;
+						end
+						11'b00111111000 : begin		//rotqbii
+							op_odd = 11'b00111111000;
+							unit_odd = 0;
+						end
+						11'b00111111100 : begin		//rotqbyi
+							op_odd = 11'b00111111100;
+							unit_odd = 0;
 						end
 					endcase
 				end
