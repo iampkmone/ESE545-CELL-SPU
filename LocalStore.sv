@@ -18,10 +18,13 @@ module LocalStore(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb
 	logic [5:0][0:127]	rt_delay;			//Staging register for calculated values
 	logic [5:0][0:6]	rt_addr_delay;		//Destination register for rt_wb
 	logic [5:0]			reg_write_delay;	//Will rt_wb write to RegTable
+	logic [5:0]			st_delay;			//1 if instr stores data to memory
 	
-	logic [6:0]			i					//7-bit counter for loops
+	logic [15:0]		i, j				//7-bit counters for loops
 	
-	logic [0:15] memory [0:7]				//32KB local memory
+	logic [0:8191] memory [0:31]			//32KB local memory
+	//logic [12:0]		mem_addr			//Memory address
+	//logic				mem_write			//1 for store, 0 for load
 	
 	// TODO : Implement all instr, memory
 	
@@ -41,9 +44,13 @@ module LocalStore(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb
 			if (format == 0) begin
 				case (op)
 					11'b00111000100 : begin					//lqx : Load Quadword (x-form)
-															// TODO : Implement after creating memory
-							rt_delay[0] = mem[$signed((ra[0:31]) + $signed(rb[0:31])) & 32'hFFFFFFF0 +: 16];
-						
+						for (i=0; i<4; i=i+1) begin
+							rt_delay[0][(i*32) +: 31] = mem[($signed((ra[0:31]) + $signed(rb[0:31])) & 32'hFFFFFFF0) + i];
+						end
+					end
+					11'b00101000100 : begin					//stqx : Store Quadword (x-form)
+						for (i=0; i<4; i=i+1) begin
+							mem[($signed((ra[0:31]) + $signed(rb[0:31])) & 32'hFFFFFFF0) + i] = rt_delay[0][(i*32) +: 31];
 						end
 					end
 				endcase
@@ -73,6 +80,8 @@ module LocalStore(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb
 				rt_addr_delay[i] <= 0;
 				reg_write_delay[i] <= 0;
 			end
+			for (i=0; i<8192; i=i+1)
+				memory[i] <= 0;
 		end
 		else begin
 			rt_delay[6] <= rt_delay[5];
