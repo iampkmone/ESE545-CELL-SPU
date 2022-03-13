@@ -71,6 +71,11 @@ module SimpleFixed2(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_
 									rt_delay[0][(i*16) +: 16] = 0;
 							end
 						end
+						default begin
+							rt_delay[0] = 0;
+							rt_addr_delay[0] = 0;
+							reg_write_delay[0] = 0;
+						end
 					endcase
 				end
 				//else if (format == 1) begin
