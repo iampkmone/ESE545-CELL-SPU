@@ -1,4 +1,4 @@
-module OddPipe(clk, reset, op, format, unit, rt_addr, ra, rb, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb);
+module OddPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rt_st_odd, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb);
 	input			clk, reset;
 	
 	//RF/FWD Stage
@@ -6,7 +6,7 @@ module OddPipe(clk, reset, op, format, unit, rt_addr, ra, rb, imm, reg_write, rt
 	input [2:0]		format;			//Format of instr, used with op and imm
 	input [1:0]		unit;			//Execution unit of instr (0: Perm, 1: LS, 2: Br, 3: Undefined)
 	input [0:6]		rt_addr;		//Destination register address
-	input [0:127]	ra, rb;		//Values of source registers
+	input [0:127]	ra, rb, rt_st_odd;	//Values of source registers
 	input [0:17]	imm;			//Immediate value, truncated based on format
 	input			reg_write;		//Will current instr write to RegTable
 	
