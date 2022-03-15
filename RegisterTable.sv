@@ -1,11 +1,7 @@
-module RegisterTable(clk, reset, instr_even, instr_odd, format_even, format_odd, ra_even, rb_even, rc_even, ra_odd, rb_odd,
+module RegisterTable(clk, reset, instr_even, instr_odd,  ra_even, rb_even, rc_even, ra_odd, rb_odd,
 		rt_st_odd, rt_addr_even, rt_addr_odd, rt_even, rt_odd, reg_write_even, reg_write_odd);
 	input logic					clk, reset;
 	input logic[0:31]			instr_even, instr_odd;			//Instructions to read from decoder
-<<<<<<< HEAD
-=======
-	input logic[2:0]				format_even, format_odd;		//Instruction formats to read, decoded
->>>>>>> 73a7ef49697dac30f5cdf9d7c6ea2347048960f9
 	output logic[0:127]	ra_even, rb_even, rc_even, ra_odd, rb_odd, rt_st_odd;	//Set all possible register values regardless of format
 
 	input logic[0:6]				rt_addr_even,rt_addr_odd;	//Destination registers to write to
@@ -30,13 +26,8 @@ module RegisterTable(clk, reset, instr_even, instr_odd, format_even, format_odd,
 		rt_st_odd = registers[instr_odd[25:31]];
 
 
-<<<<<<< HEAD
 		// $display("rc_even = %h ra_even = %h rb_even = %h  ",rc_even,ra_even,rb_even);
 		// $display("instr_even[25:31] = %h instr_even[11:17] = %h instr_even[18:24] = %h rt_addr_even = %h ",instr_even[25:31],instr_even[11:17],instr_even[18:24], rt_addr_even);
-=======
-		$display("rc_even = %h ra_even = %h rb_even = %h  ",rc_even,ra_even,rb_even);
-		$display("instr_even[25:31] = %h instr_even[11:17] = %h instr_even[18:24] = %h rt_addr_even = %h ",instr_even[25:31],instr_even[11:17],instr_even[18:24], rt_addr_even);
->>>>>>> 73a7ef49697dac30f5cdf9d7c6ea2347048960f9
 		//Forwarding in case of WAR hazard
 		if (reg_write_even == 1) begin
 			if (instr_even[25:31] == rt_addr_even_tmp)
@@ -53,11 +44,7 @@ module RegisterTable(clk, reset, instr_even, instr_odd, format_even, format_odd,
 				rb_odd = rt_even;
 		end
 
-<<<<<<< HEAD
 		// $display("2nd rc_even = %h ra_even = %h rb_even = %h  ",rc_even,ra_even,rb_even);
-=======
-		$display("2nd rc_even = %h ra_even = %h rb_even = %h  ",rc_even,ra_even,rb_even);
->>>>>>> 73a7ef49697dac30f5cdf9d7c6ea2347048960f9
 
 		if (reg_write_odd == 1) begin
 			if (instr_even[25:31] == rt_addr_odd_tmp)
