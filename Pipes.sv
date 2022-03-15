@@ -1,8 +1,7 @@
-module Pipes(clk, reset, instr_even, instr_odd);
+module Pipes(clk, reset, instr_even, instr_odd, pc, pc_wb, branch_taken);
 	input			clk, reset;
 	input [0:31]	instr_even, instr_odd;					//Instr from decoder
 	input [7:0]		pc;										//Program counter from IF stage
-	
 	
 	//Nets from decode logic (Note: Will be placed in decode/hazard unit in final submission)
 	logic [2:0]		format_even, format_odd;				//Format of instr
@@ -19,8 +18,8 @@ module Pipes(clk, reset, instr_even, instr_odd);
 	logic			reg_write_even_wb, reg_write_odd_wb;	//1 if instr will write to rt, else 0
 	
 	//Signals for handling branches
-	logic [7:0]		pc_wb;									//New program counter for branch
-	logic			branch_taken							//Was branch taken?
+	output logic [7:0]	pc_wb;									//New program counter for branch
+	output logic		branch_taken;							//Was branch taken?
 	
 	RegisterTable rf(.clk(clk), .reset(reset), .instr_even(instr_even), .instr_odd(instr_odd),
 		.ra_even(ra_even), .rb_even(rb_even), .rc_even(rc_even), .ra_odd(ra_odd), .rb_odd(rb_odd), .rt_st_odd(rt_st_odd), .rt_addr_even(rt_addr_even_wb),
@@ -35,66 +34,73 @@ module Pipes(clk, reset, instr_even, instr_odd);
 		
 	//Decode logic (Note: Will be placed in decode/hazard unit in final submission)
 	always_comb begin
-															//Even decoding, RRR-type
+															//Even decoding
 		reg_write_even = 1;
 		rt_addr_even = instr_even[25:31];
-		if (instr_even[0:3] == 4'b1100) begin				//mpya
+		if (instr_even == 0) begin							//alternate nop
+			format_even = 0;
+			op_even = 0;
+			unit_even = 0;
+			rt_addr_even = 0;
+			imm_even = 0;
+		end													//RRR-type
+		else if	(instr_even[0:3] == 4'b1100) begin			//mpya
 			format_even = 1;
 			op_even = 4'b1100;
 			unit_even = 0;
-			rt_addr_even = instr_even_rf[4:10];
+			rt_addr_even = instr_even[4:10];
 		end
 		else if (instr_even[0:3] == 4'b1110) begin			//fma
 			format_even = 1;
 			op_even = 4'b1110;
 			unit_even = 0;
-			rt_addr_even = instr_even_rf[4:10];
+			rt_addr_even = instr_even[4:10];
 		end
 		else if (instr_even[0:3] == 4'b1111) begin			//fms
 			format_even = 1;
 			op_even = 4'b1111;
 			unit_even = 0;
-			rt_addr_even = instr_even_rf[4:10];
+			rt_addr_even = instr_even[4:10];
 		end													//RI18-type
 		else if (instr_even[0:6] == 7'b0100001) begin		//ila
 			format_even = 6;
 			op_even = 7'b0100001;
 			unit_even = 3;
-			imm18_even = instr_even[7:24];
+			imm_even = $signed(instr_even[7:24]);
 		end													//RI8-type
 		else if (instr_even[0:9] == 10'b0111011000) begin	//cflts
 			format_even = 3;
 			op_even = 10'b0111011000;
 			unit_even = 0;
-			imm8_even = instr_even[10:17];
+			imm_even = $signed(instr_even[10:17]);
 		end
 		else if (instr_even[0:9] == 10'b0111011001) begin	//cfltu
 			format_even = 3;
 			op_even = 10'b0111011001;
 			unit_even = 0;
-			imm8_even = instr_even[10:17];
+			imm_even = $signed(instr_even[10:17]);
 		end													//RI16-type
 		else if (instr_even[0:8] == 9'b010000011) begin		//ilh
 			format_even = 5;
 			op_even = 9'b010000011;
 			unit_even = 3;
-			imm16_even = instr_even[9:24];
+			imm_even = $signed(instr_even[9:24]);
 		end
 		else if (instr_even[0:8] == 9'b010000010) begin		//ilhu
 			format_even = 5;
 			op_even = 9'b010000010;
 			unit_even = 3;
-			imm16_even = instr_even[9:24];
+			imm_even = $signed(instr_even[9:24]);
 		end
 		else if (instr_even[0:8] == 9'b011000001) begin		//iohl
 			format_even = 5;
 			op_even = 9'b011000001;
 			unit_even = 3;
-			imm16_even = instr_even[9:24];
+			imm_even = $signed(instr_even[9:24]);
 		end
 		else begin
 			format_even = 4;				//RI10-type
-			imm10_even = instr_even[8:17];
+			imm_even = $signed(instr_even[8:17]);
 			case(instr_even[0:7])
 				8'b01110100 : begin			//mpyi
 					op_even = 8'b01110100;
@@ -354,7 +360,7 @@ module Pipes(clk, reset, instr_even, instr_odd);
 				endcase
 				if (format_even == 7) begin
 					format_even = 2;					//RI7-type
-					imn7_even = instr_even[11:17];
+					imm_even = $signed(instr_even[11:17]);
 					case(instr_even[0:10])
 						11'b00001111011 : begin			//shli
 							op_even = 11'b00001111011;
@@ -376,30 +382,44 @@ module Pipes(clk, reset, instr_even, instr_odd);
 							op_even = 11'b00001111010;
 							unit_even = 1;
 						end
+						default begin
+							format_even = 0;
+							op_even = 0;
+							unit_even = 0;
+							rt_addr_even = 0;
+							imm_even = 0;
+						end
 					endcase
 				end
 			end
 		end
 		
-															//odd decoding, RI10-type
+															//odd decoding
 		rt_addr_odd = instr_odd[25:31];
 		reg_write_odd = 1;
-		if (instr_odd[0:7] == 8'b00110100) begin			//lqd
+		if (instr_odd == 0) begin							//alternate lnop
+			format_odd = 0;
+			op_odd = 0;
+			unit_odd = 0;
+			rt_addr_odd = 0;
+			imm_odd = 0;
+		end													//RI10-type
+		else if (instr_odd[0:7] == 8'b00110100) begin		//lqd
 			format_odd = 4;
-			op_odd = 4'b00110100;
+			op_odd = 8'b00110100;
 			unit_odd = 1;
-			imm10_odd = instr_odd[8:17];
+			imm_odd = $signed(instr_odd[8:17]);
 		end
 		else if (instr_odd[0:7] == 8'b00110100) begin		//stqd
 			format_odd = 4;
-			op_odd = 4'b00110100;
+			op_odd = 8'b00110100;
 			unit_odd = 1;
-			imm10_odd = instr_odd[8:17];
+			imm_odd = $signed(instr_odd[8:17]);
 			reg_write_odd = 0;
 		end
 		else begin
 			format_odd = 5;					//RI16-type
-			imm16_odd = instr_odd[9:24];
+			imm_odd = $signed(instr_odd[9:24]);
 			case(instr_odd[0:8])
 				9'b001100001 : begin		//lqa
 					op_odd = 9'b001100001;
@@ -490,7 +510,7 @@ module Pipes(clk, reset, instr_even, instr_odd);
 				endcase
 				if (format_odd == 7) begin
 					format_odd = 2;					//RI7-type
-					imm7_odd = instr_odd[11:17];
+					imm_odd = $signed(instr_odd[11:17]);
 					case(instr_odd[0:10])
 						11'b00111111011 : begin		//shlqbii
 							op_odd = 11'b00111111011;
@@ -507,6 +527,13 @@ module Pipes(clk, reset, instr_even, instr_odd);
 						11'b00111111100 : begin		//rotqbyi
 							op_odd = 11'b00111111100;
 							unit_odd = 0;
+						end
+						default begin
+							format_odd = 0;
+							op_odd = 0;
+							unit_odd = 0;
+							rt_addr_odd = 0;
+							imm_odd = 0;
 						end
 					endcase
 				end
