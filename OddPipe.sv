@@ -44,9 +44,7 @@ module OddPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rt_st, imm, reg_wr
 	logic [0:6]			br1_addr_out;	//Destination register for rt_wb
 	logic				br1_write_out;	//Will rt_wb write to RegTable
 	
-	
-	// TODO : Flesh out and implement execution units
-	
+	// TODO : Support forwarding signals
 	
 	Permute p1(.clk(clk), .reset(reset), .op(p1_op), .format(p1_format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .imm(imm), .reg_write(p1_reg_write), .rt_wb(p1_out),
 		.rt_addr_wb(p1_addr_out), .reg_write_wb(p1_write_out));
@@ -95,7 +93,6 @@ module OddPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rt_st, imm, reg_wr
 	end
 	
 	always_ff @(posedge clk) begin
-	
 		fw_wb[0] <= 0;								//fw0 doesn't exist, just use 0
 		fw_addr_wb[0] <= 0;
 		fw_write_wb[0] <= 0;

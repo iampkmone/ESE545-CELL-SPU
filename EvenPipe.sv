@@ -11,14 +11,14 @@ module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_writ
 	input			reg_write;		//Will current instr write to RegTable
 	
 	//WB Stage
-	output [0:127]	rt_wb;			//Output value of Stage 7
-	output [0:6]	rt_addr_wb;		//Destination register for rt_wb
-	output			reg_write_wb;	//Will rt_wb write to RegTable
+	output logic [0:127]	rt_wb;			//Output value of Stage 7
+	output logic [0:6]		rt_addr_wb;		//Destination register for rt_wb
+	output logic			reg_write_wb;	//Will rt_wb write to RegTable
 	
 	//Internal Signals
-	logic [6:0][0:127]	fw_wb			//Staging register for forwarded values
-	logic [6:0][0:6]	fw_addr_wb		//Destination register for rt_wb
-	logic [6:0]			fw_write_wb		//Will rt_wb write to RegTable
+	logic [6:0][0:127]	fw_wb;			//Staging register for forwarded values
+	logic [6:0][0:6]	fw_addr_wb;		//Destination register for rt_wb
+	logic [6:0]			fw_write_wb;	//Will rt_wb write to RegTable
 	
 	logic [0:10]		fp1_op;			//Multiplexed opcode
 	logic [2:0]			fp1_format;		//Multiplexed format
@@ -51,20 +51,18 @@ module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_writ
 	logic [0:6]			fx1_addr_out;	//Destination register for rt_wb
 	logic				fx1_write_out;	//Will rt_wb write to RegTable
 	
+	// TODO : Support forwarding signals
 	
-	// TODO : Flesh out and implement execution units
-	
-	
-	SinglePrecision fp1(.clk(clk), .reset(reset), .op(op), .format(format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .rc(rc), .imm(imm), .reg_write(reg_write),
+	SinglePrecision fp1(.clk(clk), .reset(reset), .op(fp1_op), .format(fp1_format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .rc(rc), .imm(imm), .reg_write(fp1_reg_write),
 		.rt_wb(fp1_out), .rt_addr_wb(fp1_addr_out), .reg_write_wb(fp1_write_out), .rt_int(fp1_int), .rt_addr_int(fp1_addr_int), .reg_write_int(fp1_write_int));
 	
-	SimpleFixed2 fx2(.clk(clk), .reset(reset), .op(op), .format(format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .imm(imm), .reg_write(reg_write), .rt_wb(fx2_out),
+	SimpleFixed2 fx2(.clk(clk), .reset(reset), .op(fx2_op), .format(fx2_format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .imm(imm), .reg_write(fx2_reg_write), .rt_wb(fx2_out),
 		.rt_addr_wb(fx2_addr_out), .reg_write_wb(fx2_write_out));
 	
-	Byte b1(.clk(clk), .reset(reset), .op(op), .format(format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .imm(imm), .reg_write(reg_write), .rt_wb(b1_out),
+	Byte b1(.clk(clk), .reset(reset), .op(b1_op), .format(b1_format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .imm(imm), .reg_write(b1_reg_write), .rt_wb(b1_out),
 		.rt_addr_wb(b1_addr_out), .reg_write_wb(b1_write_out));
 	
-	SimpleFixed1 fx1(.clk(clk), .reset(reset), .op(op), .format(format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .imm(imm), .reg_write(reg_write), .rt_wb(fx1_out),
+	SimpleFixed1 fx1(.clk(clk), .reset(reset), .op(fx1_op), .format(fx1_format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .imm(imm), .reg_write(fx1_reg_write), .rt_wb(fx1_out),
 		.rt_addr_wb(fx1_addr_out), .reg_write_wb(fx1_write_out));
 		
 	
@@ -115,31 +113,41 @@ module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_writ
 		fw_write_wb[0] <= 0;
 		
 		if (reset == 1) begin
-			for (i=6; i>0; i=i-1) begin
+			rt_wb = 0;
+			rt_addr_wb = 0;
+			reg_write_wb = 0;
+			for (int i=6; i>0; i=i-1) begin
 				fw_wb [i] <= 0;
 				fw_addr_wb [i] <= 0;
 				fw_write_wb [i] <= 0;
 			end
 		end
 		else begin
-			fw_wb[1] <= fw_wb[0];
-			fw_addr_wb[1] <= fw_addr_wb[0];
-			fw_write_wb[1] <= fw_write_wb[0];
-			
-			if (fx1_write_out == 1) begin			//Replace fw2 with fx1 if possible
-				fw_wb[2] <= fx1_out;
-				fw_addr_wb[2] <= fx1_addr_out;
-				fw_write_wb[2] <= fx1_write_out;
+			if (fp1_write_int == 1) begin			//Replace output with fp1 integer if possible
+				rt_wb <= fp1_int;
+				rt_addr_wb <= fp1_addr_int;
+				reg_write_wb <= fp1_write_int;
 			end
 			else begin
-				fw_wb[2] <= fw_wb[1];
-				fw_addr_wb[2] <= fw_addr_wb[1];
-				fw_write_wb[2] <= fw_write_wb[1];
+				rt_wb <= fw_wb[6];
+				rt_addr_wb <= fw_addr_wb[6];
+				reg_write_wb <= fw_write_wb[6];
 			end
 			
-			fw_wb[3] <= fw_wb[2];
-			fw_addr_wb[3] <= fw_addr_wb[2];
-			fw_write_wb[3] <= fw_write_wb[2];
+			if (fp1_write_out == 1) begin			//Replace fw6 with fp1 if possible
+				fw_wb[6] <= fp1_out;
+				fw_addr_wb[6] <= fp1_addr_out;
+				fw_write_wb[6] <= fp1_write_out;
+			end
+			else begin
+				fw_wb[6] <= fw_wb[5];
+				fw_addr_wb[6] <= fw_addr_wb[5];
+				fw_write_wb[6] <= fw_write_wb[5];
+			end
+			
+			fw_wb[5] <= fw_wb[4];
+			fw_addr_wb[5] <= fw_addr_wb[4];
+			fw_write_wb[5] <= fw_write_wb[4];
 			
 			if (fx2_write_out == 1) begin			//Replace fw4 with fx2 if possible
 				fw_wb[4] <= fx2_out;
@@ -157,31 +165,24 @@ module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_writ
 				fw_write_wb[4] <= fw_write_wb[3];
 			end
 			
-			fw_wb[5] <= fw_wb[4];
-			fw_addr_wb[5] <= fw_addr_wb[4];
-			fw_write_wb[5] <= fw_write_wb[4];
+			fw_wb[3] <= fw_wb[2];
+			fw_addr_wb[3] <= fw_addr_wb[2];
+			fw_write_wb[3] <= fw_write_wb[2];
 			
-			if (fp1_write_out == 1) begin			//Replace fw6 with fp1 if possible
-				fw_wb[6] <= fp1_out;
-				fw_addr_wb[6] <= fp1_addr_out;
-				fw_write_wb[6] <= fp1_write_out;
+			if (fx1_write_out == 1) begin			//Replace fw2 with fx1 if possible
+				fw_wb[2] <= fx1_out;
+				fw_addr_wb[2] <= fx1_addr_out;
+				fw_write_wb[2] <= fx1_write_out;
 			end
 			else begin
-				fw_wb[6] <= fw_wb[5];
-				fw_addr_wb[6] <= fw_addr_wb[5];
-				fw_write_wb[6] <= fw_write_wb[5];
+				fw_wb[2] <= fw_wb[1];
+				fw_addr_wb[2] <= fw_addr_wb[1];
+				fw_write_wb[2] <= fw_write_wb[1];
 			end
 			
-			if (fp1_write_int == 1) begin			//Replace output with fp1 integer if possible
-				rt_wb <= fp1_int;
-				rt_addr_wb <= fp1_addr_int;
-				reg_write_wb <= fp1_write_int;
-			end
-			else begin
-				rt_wb <= fw_wb[6];
-				rt_addr_wb <= fw_addr_wb[6];
-				reg_write_wb <= fw_write_wb[6];
-			end
+			fw_wb[1] <= fw_wb[0];
+			fw_addr_wb[1] <= fw_addr_wb[0];
+			fw_write_wb[1] <= fw_write_wb[0];
 		end
 	end
 	

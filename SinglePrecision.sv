@@ -36,15 +36,15 @@ module SinglePrecision(clk, reset, op, format, rt_addr, ra, rb, rc, imm, reg_wri
 			rt_int = 0;
 			rt_addr_int = 0;
 			reg_write_int = 0;
-			rt_delay[6] <= 0;
-			rt_addr_delay[6] <= 0;
-			reg_write_delay[6] <= 0;
-			int_delay[6] <= 0;
+			rt_delay[6] = 0;
+			rt_addr_delay[6] = 0;
+			reg_write_delay[6] = 0;
+			int_delay[6] = 0;
 			for (i=0; i<6; i=i+1) begin
-				rt_delay[i] <= 0;
-				rt_addr_delay[i] <= 0;
-				reg_write_delay[i] <= 0;
-				int_delay[i] <= 0;
+				rt_delay[i] = 0;
+				rt_addr_delay[i] = 0;
+				reg_write_delay[i] = 0;
+				int_delay[i] = 0;
 			end
 		end
 		else begin

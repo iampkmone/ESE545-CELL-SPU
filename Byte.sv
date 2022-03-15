@@ -24,12 +24,6 @@ module Byte(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, rt_a
 	
 	// TODO : Implement all instr
 	
-	always_comb begin		
-		
-		
-		
-	end
-	
 	always_ff @(posedge clk) begin
 		if (reset == 1) begin
 			rt_wb = 0;
