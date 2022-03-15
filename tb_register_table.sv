@@ -27,10 +27,7 @@ module tb_RegisterTable();
 
     always begin
 		#5 clk = ~clk;
-        $display("%0t: reset = %h, instr_even = %h instr_odd = %h format_even = %h
-	    format_odd = %h ra_even = %h rb_even = %h rc_even = %h
-        ra_odd = %d rb_odd = %h rt_addr_even = %h rt_addr_odd = %h rt_even = %h rt_odd = %h
-        reg_write_even = %h reg_write_odd = %h",$time, reset , instr_even, instr_odd, format_even,
+        $display("%0t: reset = %h, instr_even = %b instr_odd = %b format_even = %h format_odd = %h ra_even = %h rb_even = %h rc_even = %h ra_odd = %h rb_odd = %h rt_addr_even = %h rt_addr_odd = %h rt_even = %h rt_odd = %h reg_write_even = %h reg_write_odd = %h",$time, reset , instr_even, instr_odd, format_even,
         format_odd, ra_even, rb_even, rc_even, ra_odd, rb_odd,rt_addr_even, rt_addr_odd, rt_even, rt_odd,
         reg_write_even, reg_write_odd);
     end
@@ -51,7 +48,31 @@ module tb_RegisterTable();
 		instr_even=32'b00001011111000001100001000000101; 		//shlh rb=3 ra =4 rt=5
 		rt_addr_even=7'b000101;
 		rt_even=128'h000A000000000000000000000000000;
-		#100;
+
+		instr_odd=32'b00000000010000000000000000000; 		//lnop
+		reg_write_odd = 0;
+		rt_addr_odd = 7'b0000000;
+
+		// At address 7 we write the value rt_even
+		@(posedge clk) #10
+		// We try to read the value at address 7 for odd pipe and even pipe is also writing back to same
+		// register file (7)
+		// Odd pipe is able to read the value from reg 7 before even pipe write back new value to it.
+
+		reg_write_even = 1;
+		instr_even=32'b00001011111000001100001000000101; 		//shlh rb=3 ra =4 rt=5
+		instr_odd =32'b00111011011000000100001010000111; 		//shlqi rb=2 ra =5 rt=7
+		rt_addr_even=7'b0000101;
+		rt_addr_odd=7'b0000101;
+
+		rt_even=128'h000C000000000000000000000000000;
+		rt_odd =128'h000B000000000000000000000000000;
+		@(posedge clk) #1
+		assert(ra_odd==rt_even)
+		else
+		$display("Hazard");
+		@(posedge clk ) #8
 		$stop; // Stop simulation
+
     end
 endmodule

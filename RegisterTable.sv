@@ -21,7 +21,7 @@ module RegisterTable(clk, reset, instr_even, instr_odd, format_even, format_odd,
 		ra_odd = registers[instr_odd[18:24]];
 		rb_odd = registers[instr_odd[11:17]];
 
-		// $display("rt_even = %h ",rt_even);
+		// $display("rc_even = %h ra_even = %h rb_even = %h  ",rt_even);
 		//Forwarding in case of WAR hazard
 		if (reg_write_even == 1) begin
 			if (instr_even[25:31] == rt_addr_even)
