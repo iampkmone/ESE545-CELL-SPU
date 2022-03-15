@@ -1,4 +1,4 @@
-module tb_SimpleFixed2();
+module tb_Permute();
 	logic			clk, reset;
 	
 	//RF/FWD Stage
@@ -14,7 +14,7 @@ module tb_SimpleFixed2();
 	logic [0:6]		rt_addr_wb;		//Destination register for rt_wb
 	logic			reg_write_wb;	//Will rt_wb write to RegTable
 	
-	SimpleFixed2 dut(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb,
+	Permute dut(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb,
 		rt_addr_wb, reg_write_wb);
 		
 	// Initialize the clock to zero.
@@ -35,7 +35,7 @@ module tb_SimpleFixed2();
 	initial begin
 		reset = 1;
 		format = 3'b000;
-		op = 11'b00001011111;						//shlh
+		op = 11'b01010110100;						//shlh
 		rt_addr = 7'b0000011;						//RT = $r3
 		ra = 128'h00010001000100010001000100010001;	//Halfwords: 16'h0010
 		rb = 128'h00010001000100010001000100010001;	//Halfwords: 16'h0001
@@ -49,17 +49,18 @@ module tb_SimpleFixed2();
 		op = 0;										//@16ns, instr = nop
 	
 		@(posedge clk);
-		#1; op = 11'b00001011111;
+		#1; op = 11'b00111011011;
 		@(posedge clk);
 		//#1; op = 0;
 		@(posedge clk);
-		#1; op = 11'b00001011111;
+		#1; op = 11'b00111011011;
 		@(posedge clk);
 		//#1; op = 0;
 		@(posedge clk);
-		#1; op = 11'b00001011111;
+		#1; op = 11'b00111011011;
+		ra = 128'hFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE;
 		@(posedge clk);
-		//#1; op = 0;
+		#1; ra = 128'h00101131337377F7FF000000000000FF;
 		@(posedge clk);
 		#100; $stop; // Stop simulation
 	end

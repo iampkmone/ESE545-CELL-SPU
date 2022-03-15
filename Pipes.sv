@@ -1,30 +1,37 @@
 module Pipes(clk, reset, instr_even, instr_odd);
 	input			clk, reset;
 	input [0:31]	instr_even, instr_odd;					//Instr from decoder
+	input [7:0]		pc;										//Program counter from IF stage
+	
 	
 	//Nets from decode logic (Note: Will be placed in decode/hazard unit in final submission)
 	logic [2:0]		format_even, format_odd;				//Format of instr
 	logic [0:10]	op_even, op_odd;						//Opcode of instr (used with format)
-	logic [1:0]		unit_even, unit_odd						//Destination unit of instr; Order of: FP, FX2, Byte, FX1 (Even); Perm, LS, Br (Odd)
-	logic [0:6]		rt_addr_even, rt_addr_odd				//Destination register addresses
-	logic [0:127]	ra_even, rb_even, rc_even, ra_odd, rb_odd;	//Register values from RegTable
+	logic [1:0]		unit_even, unit_odd;					//Destination unit of instr; Order of: FP, FX2, Byte, FX1 (Even); Perm, LS, Br (Odd)
+	logic [0:6]		rt_addr_even, rt_addr_odd;				//Destination register addresses
+	logic [0:127]	ra_even, rb_even, rc_even, ra_odd, rb_odd, rt_st_odd;	//Register values from RegTable
 	logic [0:17]	imm_even, imm_odd;						//Full possible immediate value (used with format)
 	logic			reg_write_even, reg_write_odd;			//1 if instr will write to rt, else 0
 	
 	//Signals for writing back to RegTable
-	logic [0:127]	rt_even_wb, rt_odd_wb					//Values to be written back to RegTable
-	logic [0:6]		rt_addr_even_wb, rt_addr_odd_wb			//Destination register addresses
+	logic [0:127]	rt_even_wb, rt_odd_wb;					//Values to be written back to RegTable
+	logic [0:6]		rt_addr_even_wb, rt_addr_odd_wb;		//Destination register addresses
 	logic			reg_write_even_wb, reg_write_odd_wb;	//1 if instr will write to rt, else 0
 	
-	RegisterTable rf(.clk(clk), .reset(reset), .instr_even(instr_even), .instr_odd(instr_odd), .format_even(format_even), .format_odd(format_odd),
-		.ra_even(ra_even), .rb_even(rb_even), .rc_even(rc_even), .ra_odd(ra_odd), .rb_odd(rb_odd), .rt_addr_even(rt_addr_even_wb),
+	//Signals for handling branches
+	logic [7:0]		pc_wb;									//New program counter for branch
+	logic			branch_taken							//Was branch taken?
+	
+	RegisterTable rf(.clk(clk), .reset(reset), .instr_even(instr_even), .instr_odd(instr_odd),
+		.ra_even(ra_even), .rb_even(rb_even), .rc_even(rc_even), .ra_odd(ra_odd), .rb_odd(rb_odd), .rt_st_odd(rt_st_odd), .rt_addr_even(rt_addr_even_wb),
 		.rt_addr_odd(rt_addr_odd_wb), .rt_even(rt_even_wb), .rt_odd(rt_odd_wb), .reg_write_even(reg_write_even_wb), .reg_write_odd(reg_write_odd_wb));
 	
 	EvenPipe ev(.clk(clk), .reset(reset), .op(op_even), .format(format_even), .unit(unit_even), .rt_addr(rt_addr_even), .ra(ra_even), .rb(rb_even), .rc(rc_even),
 		.imm(imm_even), .reg_write(reg_write_even), .rt_wb(rt_even_wb), .rt_addr_wb(rt_addr_even_wb), .reg_write_wb(reg_write_even_wb));
 	
 	OddPipe od(.clk(clk), .reset(reset), .op(op_odd), .format(format_odd), .unit(unit_odd), .rt_addr(rt_addr_odd), .ra(ra_odd), .rb(rb_odd),
-		.imm(imm_odd), .reg_write(reg_write_odd), .rt_wb(rt_odd_wb), .rt_addr_wb(rt_addr_odd_wb), .reg_write_wb(reg_write_odd_wb));
+		.rt_st(rt_st_odd), .imm(imm_odd), .reg_write(reg_write_odd), .pc_in(pc), .rt_wb(rt_odd_wb), .rt_addr_wb(rt_addr_odd_wb), .reg_write_wb(reg_write_odd_wb),
+		.pc_wb(pc_wb), .branch_taken(branch_taken));
 		
 	//Decode logic (Note: Will be placed in decode/hazard unit in final submission)
 	always_comb begin

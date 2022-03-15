@@ -1,11 +1,11 @@
-module tb_SimpleFixed2();
+module tb_LocalStore();
 	logic			clk, reset;
 	
 	//RF/FWD Stage
 	logic [0:10]	op;				//Decoded opcode, truncated based on format
 	logic [2:0]		format;			//Format of instr, used with op and imm
 	logic [0:6]		rt_addr;		//Destination register address
-	logic [0:127]	ra, rb;			//Values of source registers
+	logic [0:127]	ra, rb, rt_st_odd;	//Values of source registers
 	logic [0:17]	imm;			//Immediate value, truncated based on format
 	logic			reg_write;		//Will current instr write to RegTable
 	
@@ -14,7 +14,7 @@ module tb_SimpleFixed2();
 	logic [0:6]		rt_addr_wb;		//Destination register for rt_wb
 	logic			reg_write_wb;	//Will rt_wb write to RegTable
 	
-	SimpleFixed2 dut(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb,
+	LocalStore dut(clk, reset, op, format, rt_addr, ra, rb, rt_st_odd, imm, reg_write, rt_wb,
 		rt_addr_wb, reg_write_wb);
 		
 	// Initialize the clock to zero.
@@ -28,17 +28,18 @@ module tb_SimpleFixed2();
 			rb = %h, imm = %h, reg_write = %h, rt_wb = %h, rt_addr_wb = %h,
 			reg_write_wb = %h", $time, reset, format, op, rt_addr, ra, rb, imm, reg_write,
 			rt_wb, rt_addr_wb, reg_write_wb);
-		for (int i=0; i<8; i++)
-			rb[i*16 +:16] = rb[i*16 +:16] + 1;
+		//for (int i=0; i<8; i++)
+		//	rb[i*16 +:16] = rb[i*16 +:16] + 1;
 	end
 		
 	initial begin
 		reset = 1;
 		format = 3'b000;
-		op = 11'b00001011111;						//shlh
+		op = 11'b00101000100;						//lqx
 		rt_addr = 7'b0000011;						//RT = $r3
-		ra = 128'h00010001000100010001000100010001;	//Halfwords: 16'h0010
-		rb = 128'h00010001000100010001000100010001;	//Halfwords: 16'h0001
+		ra = 128'h00000010000100010001000100010001;	//Halfwords: 16'h0010
+		rb = 128'h000000F0000100010001000100010001;	//Halfwords: 16'h0001
+		rt_st_odd = 128'h00000001000100010001000100010001;
 		imm = 0;
 		reg_write = 1;
 		
@@ -49,17 +50,19 @@ module tb_SimpleFixed2();
 		op = 0;										//@16ns, instr = nop
 	
 		@(posedge clk);
-		#1; op = 11'b00001011111;
+		//#1; op = 11'b00111011011;
 		@(posedge clk);
 		//#1; op = 0;
 		@(posedge clk);
-		#1; op = 11'b00001011111;
+		//#1; op = 11'b00111011011;
 		@(posedge clk);
 		//#1; op = 0;
 		@(posedge clk);
-		#1; op = 11'b00001011111;
+		//#1; op = 11'b00111011011;
+		//ra = 128'hFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE;
 		@(posedge clk);
-		//#1; op = 0;
+		#1; //ra = 128'h00101131337377F7FF000000000000FF;
+		op = 11'b00111000100;
 		@(posedge clk);
 		#100; $stop; // Stop simulation
 	end

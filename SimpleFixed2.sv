@@ -29,6 +29,9 @@ module SimpleFixed2(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_
 	
 	always_ff @(posedge clk) begin
 		if (reset == 1) begin
+			rt_wb = 0;
+			rt_addr_wb = 0;
+			reg_write_wb = 0;
 			rt_delay[3] <= 0;
 			rt_addr_delay[3] <= 0;
 			reg_write_delay[3] <= 0;

@@ -1,4 +1,4 @@
-module tb_SimpleFixed2();
+module tb_SimpleFixed1();
 	logic			clk, reset;
 	
 	//RF/FWD Stage
@@ -14,7 +14,7 @@ module tb_SimpleFixed2();
 	logic [0:6]		rt_addr_wb;		//Destination register for rt_wb
 	logic			reg_write_wb;	//Will rt_wb write to RegTable
 	
-	SimpleFixed2 dut(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb,
+	SimpleFixed1 dut(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb,
 		rt_addr_wb, reg_write_wb);
 		
 	// Initialize the clock to zero.
@@ -28,14 +28,12 @@ module tb_SimpleFixed2();
 			rb = %h, imm = %h, reg_write = %h, rt_wb = %h, rt_addr_wb = %h,
 			reg_write_wb = %h", $time, reset, format, op, rt_addr, ra, rb, imm, reg_write,
 			rt_wb, rt_addr_wb, reg_write_wb);
-		for (int i=0; i<8; i++)
-			rb[i*16 +:16] = rb[i*16 +:16] + 1;
 	end
 		
 	initial begin
 		reset = 1;
 		format = 3'b000;
-		op = 11'b00001011111;						//shlh
+		op = 11'b01010110100;						//shlh
 		rt_addr = 7'b0000011;						//RT = $r3
 		ra = 128'h00010001000100010001000100010001;	//Halfwords: 16'h0010
 		rb = 128'h00010001000100010001000100010001;	//Halfwords: 16'h0001
@@ -49,7 +47,7 @@ module tb_SimpleFixed2();
 		op = 0;										//@16ns, instr = nop
 	
 		@(posedge clk);
-		#1; op = 11'b00001011111;
+		#1; op = 11'b00011001000;
 		@(posedge clk);
 		//#1; op = 0;
 		@(posedge clk);
@@ -57,9 +55,10 @@ module tb_SimpleFixed2();
 		@(posedge clk);
 		//#1; op = 0;
 		@(posedge clk);
-		#1; op = 11'b00001011111;
+		#1; op = 11'b00011001000;
+		ra = 128'hFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE;
 		@(posedge clk);
-		//#1; op = 0;
+		#1; ra = 128'h00101131337377F7FF000000000000FF;
 		@(posedge clk);
 		#100; $stop; // Stop simulation
 	end
