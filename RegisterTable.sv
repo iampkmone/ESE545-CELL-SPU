@@ -2,9 +2,11 @@ module RegisterTable(clk, reset, instr_even, instr_odd, ra_even, rb_even, rc_eve
 		rt_st_odd, rt_addr_even, rt_addr_odd, rt_even, rt_odd, reg_write_even, reg_write_odd);
 	input					clk, reset;
 	
+	//RF/FWD Stage
 	input [0:31]			instr_even, instr_odd;			//Instructions to read from decoder
 	output logic [0:127]	ra_even, rb_even, rc_even, ra_odd, rb_odd, rt_st_odd;	//Set all possible register values regardless of format
 
+	//WB Stage
 	input [0:6]				rt_addr_even, rt_addr_odd;		//Destination registers to write to
 	input [0:127]			rt_even, rt_odd;				//Values to write to destination registers
 	input 					reg_write_even, reg_write_odd;	//1 if instr will write to rt, else 0

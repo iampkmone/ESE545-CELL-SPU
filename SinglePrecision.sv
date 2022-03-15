@@ -33,9 +33,11 @@ module SinglePrecision(clk, reset, op, format, rt_addr, ra, rb, rc, imm, reg_wri
 			rt_wb = 0;
 			rt_addr_wb = 0;
 			reg_write_wb = 0;
+			
 			rt_int = 0;
 			rt_addr_int = 0;
 			reg_write_int = 0;
+			
 			rt_delay[6] = 0;
 			rt_addr_delay[6] = 0;
 			reg_write_delay[6] = 0;
@@ -69,6 +71,7 @@ module SinglePrecision(clk, reset, op, format, rt_addr, ra, rb, rc, imm, reg_wri
 				rt_addr_wb = 0;
 				reg_write_wb = 0;
 			end
+			
 			rt_delay[6] <= rt_delay[5];
 			rt_addr_delay[6] <= rt_addr_delay[5];
 			reg_write_delay[6] <= reg_write_delay[5];

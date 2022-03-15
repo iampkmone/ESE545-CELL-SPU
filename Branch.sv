@@ -35,6 +35,7 @@ module Branch(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, pc_in, rt
 			reg_write_wb = 0;
 			pc_wb = 0;
 			branch_taken = 0;
+			
 			rt_delay <= 0;
 			rt_addr_delay <= 0;
 			reg_write_delay <= 0;
@@ -47,6 +48,7 @@ module Branch(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, pc_in, rt
 			reg_write_wb = reg_write_delay;
 			pc_wb = pc_delay;
 			branch_taken = branch_delay;
+			
 			if (format == 0 && op == 0) begin					//nop : No Operation (Load)
 				rt_delay = 0;
 				rt_addr_delay = 0;

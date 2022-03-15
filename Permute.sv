@@ -41,15 +41,19 @@ module Permute(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, r
 			rt_wb = rt_delay[3];
 			rt_addr_wb = rt_addr_delay[3];
 			reg_write_wb = reg_write_delay[3];
+			
 			rt_delay[3] <= rt_delay[2];
 			rt_addr_delay[3] <= rt_addr_delay[2];
 			reg_write_delay[3] <= reg_write_delay[2];
+			
 			rt_delay[2] <= rt_delay[1];
 			rt_addr_delay[2] <= rt_addr_delay[1];
 			reg_write_delay[2] <= reg_write_delay[1];
+			
 			rt_delay[1] <= rt_delay[0];
 			rt_addr_delay[1] <= rt_addr_delay[0];
 			reg_write_delay[1] <= reg_write_delay[0];
+			
 			if (format == 0 && op == 0) begin					//nop : No Operation (Load)
 				rt_delay[0] = 0;
 				rt_addr_delay[0] = 0;
@@ -61,9 +65,7 @@ module Permute(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, r
 				if (format == 0) begin
 					case (op)
 						11'b00111011011 : begin					//shlqbi : Shift Left Quadword by Bits
-							for (i=0; i<4; i=i+1) begin
-									rt_delay[0] = ra << rb[29:31];
-							end
+							rt_delay[0] = ra << rb[29:31];
 						end
 						default begin
 							rt_delay[0] = 0;

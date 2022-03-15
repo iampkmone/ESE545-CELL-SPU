@@ -45,9 +45,11 @@ module LocalStore(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_write
 			rt_wb = rt_delay[5];
 			rt_addr_wb = rt_addr_delay[5];
 			reg_write_wb = reg_write_delay[5];
+			
 			rt_delay[5] <= rt_delay[4];
 			rt_addr_delay[5] <= rt_addr_delay[4];
 			reg_write_delay[5] <= reg_write_delay[4];
+			
 			for (i=0; i<4; i=i+1) begin
 				rt_delay[i+1] <= rt_delay[i];
 				rt_addr_delay[i+1] <= rt_addr_delay[i];
