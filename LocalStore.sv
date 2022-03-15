@@ -1,11 +1,11 @@
-module LocalStore(clk, reset, op, format, rt_addr, ra, rb, rt_st_odd, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb);
+module LocalStore(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb);
 	input			clk, reset;
 	
 	//RF/FWD Stage
 	input [0:10]	op;				//Decoded opcode, truncated based on format
 	input [2:0]		format;			//Format of instr, used with op and imm
 	input [0:6]		rt_addr;		//Destination register address
-	input [0:127]	ra, rb, rt_st_odd;	//Values of source registers
+	input [0:127]	ra, rb, rt_st;	//Values of source registers
 	input [0:17]	imm;			//Immediate value, truncated based on format
 	input			reg_write;		//Will current instr write to RegTable
 	
@@ -71,7 +71,7 @@ module LocalStore(clk, reset, op, format, rt_addr, ra, rb, rt_st_odd, imm, reg_w
 						end
 						11'b00101000100 : begin					//stqx : Store Quadword (x-form)
 							for (i=0; i<16; i=i+1) begin
-								mem[($signed((ra[0:31]) + $signed(rb[0:31])) & 32'hFFFFFFF0) + i] = rt_st_odd[(i*8) +: 8];
+								mem[($signed((ra[0:31]) + $signed(rb[0:31])) & 32'hFFFFFFF0) + i] = rt_st[(i*8) +: 8];
 							end
 							reg_write_delay[0] = 0;
 						end

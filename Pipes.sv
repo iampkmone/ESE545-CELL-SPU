@@ -30,7 +30,7 @@ module Pipes(clk, reset, instr_even, instr_odd);
 		.imm(imm_even), .reg_write(reg_write_even), .rt_wb(rt_even_wb), .rt_addr_wb(rt_addr_even_wb), .reg_write_wb(reg_write_even_wb));
 	
 	OddPipe od(.clk(clk), .reset(reset), .op(op_odd), .format(format_odd), .unit(unit_odd), .rt_addr(rt_addr_odd), .ra(ra_odd), .rb(rb_odd),
-		.rt_st_odd(rt_st_odd), .imm(imm_odd), .reg_write(reg_write_odd), .pc_in(pc), .rt_wb(rt_odd_wb), .rt_addr_wb(rt_addr_odd_wb), .reg_write_wb(reg_write_odd_wb),
+		.rt_st(rt_st_odd), .imm(imm_odd), .reg_write(reg_write_odd), .pc_in(pc), .rt_wb(rt_odd_wb), .rt_addr_wb(rt_addr_odd_wb), .reg_write_wb(reg_write_odd_wb),
 		.pc_wb(pc_wb), .branch_taken(branch_taken));
 		
 	//Decode logic (Note: Will be placed in decode/hazard unit in final submission)
