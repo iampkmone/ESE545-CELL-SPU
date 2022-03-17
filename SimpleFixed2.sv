@@ -23,11 +23,14 @@ module SimpleFixed2(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_
 	
 	// TODO : Implement all instr
 	
+	always_comb begin
+		rt_wb = rt_delay[3];
+		rt_addr_wb = rt_addr_delay[3];
+		reg_write_wb = reg_write_delay[3];
+	end
+	
 	always_ff @(posedge clk) begin
 		if (reset == 1) begin
-			rt_wb <= 0;
-			rt_addr_wb <= 0;
-			reg_write_wb <= 0;
 			rt_delay[3] <= 0;
 			rt_addr_delay[3] <= 0;
 			reg_write_delay[3] <= 0;
@@ -38,15 +41,14 @@ module SimpleFixed2(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_
 			end
 		end
 		else begin
-			rt_wb <= rt_delay[3];
-			rt_addr_wb <= rt_addr_delay[3];
-			reg_write_wb <= reg_write_delay[3];
 			rt_delay[3] <= rt_delay[2];
 			rt_addr_delay[3] <= rt_addr_delay[2];
 			reg_write_delay[3] <= reg_write_delay[2];
+			
 			rt_delay[2] <= rt_delay[1];
 			rt_addr_delay[2] <= rt_addr_delay[1];
 			reg_write_delay[2] <= reg_write_delay[1];
+			
 			rt_delay[1] <= rt_delay[0];
 			rt_addr_delay[1] <= rt_addr_delay[0];
 			reg_write_delay[1] <= reg_write_delay[0];

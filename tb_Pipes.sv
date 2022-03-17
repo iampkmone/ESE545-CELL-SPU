@@ -33,7 +33,7 @@ module tb_Pipes();
 		#6;
 		reset = 0;											//@11ns, enable unit
 		
-		@(posedge clk); //#1;									//@16ns
+		@(posedge clk); //#1;								//@15ns
 		instr_even = 32'b01011000100000001000000010000011;	//fa $3, $1, $2
 		instr_odd = 32'b00111011011000010100001000000110;	//shlqbi $6, $4, $5
 		
@@ -44,9 +44,8 @@ module tb_Pipes();
 		@(posedge clk);
 		@(posedge clk);
 		@(posedge clk);
-		@(posedge clk);
 		
-		@(posedge clk); //#1;									//@21ns
+		@(posedge clk); //#1;								//@20ns
 		instr_even = 32'b00001011111000001100000110000111;	//shlh $7, $3, $3
 		instr_odd = 32'b0;									//nop (ls)
 		
@@ -55,22 +54,24 @@ module tb_Pipes();
 		@(posedge clk);
 		@(posedge clk);
 		@(posedge clk);
-		@(posedge clk);
 		
-		@(posedge clk); //#1;									//@26ns
+		@(posedge clk); //#1;								//@25ns
 		instr_even = 32'b00011001000000001100001110001000;	//fa $8, $7, $3
 		instr_odd = 32'b0;									//nop (ls)
 		
-		@(posedge clk); //#1; #1; 
-		instr_even = 0; instr_odd = 0;	//@31ns
+		@(posedge clk); //#1; 								//@30ns
+		instr_even = 0;
+		instr_odd = 32'b00110011000000000011001000001010;	
 		
-		@(posedge clk); #1;									//@36ns
+		@(posedge clk); #1;									//@35ns
+		instr_even = 0;
+		instr_odd = 0;
 		
-		@(posedge clk); #1;									//@41ns
+		@(posedge clk); #1;									//@40ns
 		
-		@(posedge clk); #1;									//@46ns
+		@(posedge clk); #1;									//@45ns
 		
-		@(posedge clk); #1;									//@51ns
+		@(posedge clk); #1;									//@50ns
 		#200; $stop;
 	end
 endmodule
