@@ -31,38 +31,46 @@ module tb_Pipes();
 		
 		
 		#6;
-		reset = 0;									//@11ns, enable unit, mpy @ Float (int)
+		reset = 0;											//@11ns, enable unit
 		
-		@(posedge clk); #1;							//@16ns, even = fa, odd = dhlqbi
-		instr_even = 32'b01011000100000001000000010000011;
-		instr_odd = 32'b00111011011000010100001000000110;
-		//unit = 0;
-		//op = 11'b01011000100;
-		//rt_addr = 7'b0000100;						//RT = $r4
+		@(posedge clk); //#1;									//@16ns
+		instr_even = 32'b01011000100000001000000010000011;	//fa $3, $1, $2
+		instr_odd = 32'b00111011011000010100001000000110;	//shlqbi $6, $4, $5
 		
-		@(posedge clk); #1;							//@21ns, shlh @ FX2
-		//unit = 1;
-		//op = 11'b00001011111;	
-		//rt_addr = 7'b0000101;						//RT = $r5	
-	
-		@(posedge clk); #1;							//@26ns, cntb @ Byte
-		//unit = 2;
-		//op = 11'b01010110100;
-		//rt_addr = 7'b0000110;						//RT = $r6	
-		//format = 5;
-		@(posedge clk);								//@31ns, ah @ FX1
-		#1; //unit = 3;
-		//op = 11'b00011001000;
-		//format = 0;
-		//rt_addr = 7'b0000111;						//RT = $r7	
-		@(posedge clk);								//@36ns, NOP
-		#1; //op = 0;
+		@(posedge clk); //#1;
+		instr_even = 0; instr_odd = 0;
 		@(posedge clk);
-		#1; //op = 0;
-		//ra = 128'hFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE;
 		@(posedge clk);
-		#1; //ra = 128'h00101131337377F7FF000000000000FF;
 		@(posedge clk);
-		#100; $stop; // Stop simulation
+		@(posedge clk);
+		@(posedge clk);
+		@(posedge clk);
+		
+		@(posedge clk); //#1;									//@21ns
+		instr_even = 32'b00001011111000001100000110000111;	//shlh $7, $3, $3
+		instr_odd = 32'b0;									//nop (ls)
+		
+		@(posedge clk); //#1; 
+		instr_even = 0; instr_odd = 0;
+		@(posedge clk);
+		@(posedge clk);
+		@(posedge clk);
+		@(posedge clk);
+		
+		@(posedge clk); //#1;									//@26ns
+		instr_even = 32'b00011001000000001100001110001000;	//fa $8, $7, $3
+		instr_odd = 32'b0;									//nop (ls)
+		
+		@(posedge clk); //#1; #1; 
+		instr_even = 0; instr_odd = 0;	//@31ns
+		
+		@(posedge clk); #1;									//@36ns
+		
+		@(posedge clk); #1;									//@41ns
+		
+		@(posedge clk); #1;									//@46ns
+		
+		@(posedge clk); #1;									//@51ns
+		#200; $stop;
 	end
 endmodule

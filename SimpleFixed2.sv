@@ -25,22 +25,22 @@ module SimpleFixed2(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_
 	
 	always_ff @(posedge clk) begin
 		if (reset == 1) begin
-			rt_wb = 0;
-			rt_addr_wb = 0;
-			reg_write_wb = 0;
-			rt_delay[3] = 0;
-			rt_addr_delay[3] = 0;
-			reg_write_delay[3] = 0;
+			rt_wb <= 0;
+			rt_addr_wb <= 0;
+			reg_write_wb <= 0;
+			rt_delay[3] <= 0;
+			rt_addr_delay[3] <= 0;
+			reg_write_delay[3] <= 0;
 			for (i=0; i<3; i=i+1) begin
-				rt_delay[i] = 0;
-				rt_addr_delay[i] = 0;
-				reg_write_delay[i] = 0;
+				rt_delay[i] <= 0;
+				rt_addr_delay[i] <= 0;
+				reg_write_delay[i] <= 0;
 			end
 		end
 		else begin
-			rt_wb = rt_delay[3];
-			rt_addr_wb = rt_addr_delay[3];
-			reg_write_wb = reg_write_delay[3];
+			rt_wb <= rt_delay[3];
+			rt_addr_wb <= rt_addr_delay[3];
+			reg_write_wb <= reg_write_delay[3];
 			rt_delay[3] <= rt_delay[2];
 			rt_addr_delay[3] <= rt_addr_delay[2];
 			reg_write_delay[3] <= reg_write_delay[2];
@@ -52,28 +52,28 @@ module SimpleFixed2(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_
 			reg_write_delay[1] <= reg_write_delay[0];
 			
 			if (format == 0 && op == 0) begin					//nop : No Operation (Execute)
-				rt_delay[0] = 0;
-				rt_addr_delay[0] = 0;
-				reg_write_delay[0] = 0;
+				rt_delay[0] <= 0;
+				rt_addr_delay[0] <= 0;
+				reg_write_delay[0] <= 0;
 			end
 			else begin
-				rt_addr_delay[0] = rt_addr;
-				reg_write_delay[0] = reg_write;
+				rt_addr_delay[0] <= rt_addr;
+				reg_write_delay[0] <= reg_write;
 				if (format == 0) begin
 					case (op)
 						11'b00001011111 : begin					//shlh : Shift Left Halfword
 							for (i=0; i<8; i=i+1) begin
 								if ((rb[(i*16) +: 16] & 16'h001F) < 16) begin
-									rt_delay[0][(i*16) +: 16] = ra[(i*16) +: 16] << (rb[(i*16) +: 16] & 16'h001F);
+									rt_delay[0][(i*16) +: 16] <= ra[(i*16) +: 16] << (rb[(i*16) +: 16] & 16'h001F);
 								end
 								else
-									rt_delay[0][(i*16) +: 16] = 0;
+									rt_delay[0][(i*16) +: 16] <= 0;
 							end
 						end
 						default begin
-							rt_delay[0] = 0;
-							rt_addr_delay[0] = 0;
-							reg_write_delay[0] = 0;
+							rt_delay[0] <= 0;
+							rt_addr_delay[0] <= 0;
+							reg_write_delay[0] <= 0;
 						end
 					endcase
 				end
