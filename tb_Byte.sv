@@ -33,10 +33,10 @@ module tb_Byte();
 	initial begin
 		reset = 1;
 		format = 3'b000;
-		op = 11'b01010110100;						//shlh
+		op = 11'b01010110100;						//cntb
 		rt_addr = 7'b0000011;						//RT = $r3
-		ra = 128'h00010001000100010001000100010001;	//Halfwords: 16'h0010
-		rb = 128'h00010001000100010001000100010001;	//Halfwords: 16'h0001
+		ra = 128'h0003000F000100010001000100010001;	//Halfwords: 16'h0010
+		rb = 128'h00FB0000000100010001000100010001;	//Halfwords: 16'h0001
 		imm = 0;
 		reg_write = 1;
 		
@@ -44,22 +44,13 @@ module tb_Byte();
 		reset = 0;									//@11ns, enable unit
 		
 		@(posedge clk); #1;
-		op = 0;										//@16ns, instr = nop
-	
-		@(posedge clk);
-		#1; op = 11'b01010110100;
-		@(posedge clk);
-		//#1; op = 0;
-		@(posedge clk);
-		#1; op = 11'b00001011111;
-		@(posedge clk);
-		//#1; op = 0;
-		@(posedge clk);
-		#1; op = 11'b01010110100;
-		ra = 128'hFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
-		@(posedge clk);
-		#1; ra = 128'h00101131337377F7FF000000000000FF;
-		@(posedge clk);
+		op = 11'b00011010011;						//avgb
+		@(posedge clk); #1;
+		op = 11'b00001010011;						//absdb
+		@(posedge clk); #1;
+		op = 11'b01001010011;						//sumb
+		@(posedge clk); #1;
+		op = 0;										//nop
 		#100; $stop; // Stop simulation
 	end
 endmodule
