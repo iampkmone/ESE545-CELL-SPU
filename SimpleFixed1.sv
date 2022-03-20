@@ -28,6 +28,8 @@ module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_
 	logic signed [31:0] min_value_16 = 16'h8000;
 	logic signed [0:31] mask =1<<31;
 
+	logic [0:128] tmp;
+
 	// TODO : Implement all instr
 
 	always_ff @(posedge clk) begin
@@ -41,6 +43,7 @@ module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_
 			rt_delay[0] <= 0;
 			rt_addr_delay[0] <= 0;
 			reg_write_delay[0] <= 0;
+			tmp = 0;
 		end
 		else begin
 			rt_wb <= rt_delay[1];
@@ -296,27 +299,352 @@ module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_
 				//else if (format == 3) begin
 				//end
 				else if (format == 4) begin //RI10-type
-					case(op)
+					case (op)
 						8'b00010110 : begin // andbi rt, ra, imm10 And Byte Immediate
 							$display("andbi");
-							for(int i=0;i<15;i=i+1) begin
-								rt_delay[0][(i*8) +: 8] = ra[(i*8) +: 8] & (imm & 16'h00FF);
+							for(int i=0;i<15;i=i+2) begin
+								rt_delay[0][(i*8) +: 16] = ra[(i*8) +: 16] & ((imm[10:17] & 8'hFF) | (imm[9:17] & 8'hFF) <<16) ;
 							end
 							// rt_delay[0] =  ra & rb;
 							$display("ra = %h",ra);
 							$display("imm10 = %b %b ",imm, (imm[10:17]));
 							$display("rt_delay = %h",rt_delay[0]);
 						end
+
+						8'b00010101 : begin // andhi rt, ra, imm10 And Halfword Immediate
+							$display("andhi");
+							for(int i=0;i<6;i=i+1) begin
+								tmp[i] =  imm[8];
+							end
+							tmp[6:15] = imm[8:17];
+							for(int i=0;i<15;i=i+2) begin
+								rt_delay[0][(i*8) +: 16] = ra[(i*8) +: 16] & tmp[0:15];
+							end
+							// rt_delay[0] =  ra & rb;
+							$display("ra = %h",ra);
+							$display("imm10 = %b %b ",imm, tmp[0:15]);
+							$display("rt_delay = %h",rt_delay[0]);
+						end
+						8'b00010100 : begin // andi rt, ra, imm10 And Word Immediate
+							$display("andi");
+							for(int i=0;i<21;i=i+1) begin
+								tmp[i] =  imm[8];
+							end
+							tmp[21:31] = imm[8:17];
+							for(int i=0;i<15;i=i+4) begin
+								rt_delay[0][(i*8) +: 32] = ra[(i*8) +: 32] & tmp[0:31];
+							end
+							// rt_delay[0] =  ra & rb;
+							$display("ra = %h",ra);
+							$display("imm10 = %b %b %h ",imm, tmp[0:31],tmp[0:31]);
+							$display("rt_delay = %h",rt_delay[0]);
+						end
+
+						8'b00000110 : begin // orbi rt, ra, imm10 Or Byte Immediate
+							$display("orbi");
+							for(int i=0;i<15;i=i+4) begin
+								rt_delay[0][(i*8) +: 32] = ra[(i*8) +: 32] | ({(imm[10:17] & 8'hFF) ,(imm[10:17] & 8'hFF),(imm[10:17] & 8'hFF),(imm[10:17] & 8'hFF)}) ;
+								// $display("ra[(i*8) +: 16] %h %h  ",ra[(i*8) +: 16],{(imm[10:17] & 8'hFF) ,(imm[10:17] & 8'hFF)} );
+							end
+							// rt_delay[0] =  ra & rb;
+							$display("ra = %h",ra);
+							$display("imm10 = %b %b %h ",imm, imm[10:17], {(imm[1:17] & 16'h00FF) ,(imm[1:17] & 16'h00FF)} );
+							$display("rt_delay = %h",rt_delay[0]);
+						end
+
+						8'b00000101 : begin // orhi rt, ra, imm10 Or Halfword Immediate
+							$display("orhi");
+							for(int i=0;i<6;i=i+1) begin
+								tmp[i] =  imm[8];
+							end
+							tmp[6:15] = imm[8:17];
+							for(int i=0;i<15;i=i+2) begin
+								rt_delay[0][(i*8) +: 16] = ra[(i*8) +: 16] | tmp[0:15];
+							end
+							// rt_delay[0] =  ra & rb;
+							$display("ra = %h",ra);
+							$display("imm10 = %b %b ",imm, tmp[0:15]);
+							$display("rt_delay = %h",rt_delay[0]);
+						end
+						8'b00000100 : begin // ori rt, ra, imm10 Or Word Immediate
+							$display("ori");
+							for(int i=0;i<21;i=i+1) begin
+								tmp[i] =  imm[8];
+							end
+							tmp[21:31] = imm[8:17];
+							for(int i=0;i<15;i=i+4) begin
+								rt_delay[0][(i*8) +: 32] = ra[(i*8) +: 32] | tmp[0:31];
+							end
+							// rt_delay[0] =  ra & rb;
+							$display("ra = %h",ra);
+							$display("imm10 = %b %b ",imm, tmp[0:31]);
+							$display("rt_delay = %h",rt_delay[0]);
+						end
+
+
+						8'b01000110 : begin // xorbi rt, ra, imm10 Exclusive Or Byte Immediate
+							$display("xorbi");
+							for(int i=0;i<15;i=i+4) begin
+								rt_delay[0][(i*8) +: 32] = ra[(i*8) +: 32] ^ ({(imm[10:17] & 8'hFF) ,(imm[10:17] & 8'hFF),(imm[10:17] & 8'hFF),(imm[10:17] & 8'hFF)}) ;
+							end
+							// rt_delay[0] =  ra & rb;
+							$display("ra = %h",ra);
+							$display("imm10 = %b %b %h ",imm, imm[10:17],{(imm[10:17] & 8'hFF) ,(imm[10:17] & 8'hFF),(imm[10:17] & 8'hFF),(imm[10:17] & 8'hFF)});
+							$display("rt_delay = %h",rt_delay[0]);
+						end
+
+						8'b01000101 : begin // xorhi rt, ra, imm10 Xor Halfword Immediate
+							$display("xorhi");
+							for(int i=0;i<6;i=i+1) begin
+								tmp[i] =  imm[8];
+							end
+							tmp[6:15] = imm[8:17];
+							for(int i=0;i<15;i=i+2) begin
+								rt_delay[0][(i*8) +: 16] = ra[(i*8) +: 16] ^ tmp[0:15];
+							end
+							// rt_delay[0] =  ra & rb;
+							$display("ra = %h",ra);
+							$display("imm10 = %b %b ",imm, tmp[0:15]);
+							$display("rt_delay = %h",rt_delay[0]);
+						end
+						8'b01000100 : begin // xori rt, ra, imm10 Xor Word Immediate
+							$display("xori");
+							for(int i=0;i<21;i=i+1) begin
+								tmp[i] =  imm[8];
+							end
+							tmp[21:31] = imm[8:17];
+							for(int i=0;i<15;i=i+4) begin
+								rt_delay[0][(i*8) +: 32] = ra[(i*8) +: 32] ^ tmp[0:31];
+							end
+							// rt_delay[0] =  ra & rb;
+							$display("ra = %h",ra);
+							$display("imm10 = %b %h ",imm, tmp[0:31]);
+							$display("rt_delay = %h",rt_delay[0]);
+						end
+
+						8'b01111110 : begin // ceqbi rt, ra, imm10 Compare Equal Byte Immediate
+
+							for(int i=0;i<16;i=i+1) begin
+								if(ra[(i*8) +: 8] == imm[10:17]) begin
+									rt_delay[0][(i*8) +: 8] = 8'hFF;
+								end
+								else begin
+									rt_delay[0][(i*8) +: 8] = 8'h00;
+								end
+							end
+
+							$display("ceqbi rt, ra, rb");
+							$display("ra = %h",ra);
+							$display("rb = %h",rb);
+							$display("rt_delay = %h",rt_delay[0]);
+						end
+
+
+						8'b01111101 : begin // ceqhi rt, ra, imm10 Compare Equal Halfword Immediate
+
+							for(int i=0;i<6;i=i+1) begin
+								tmp[i] =  imm[8];
+							end
+							tmp[6:15] = imm[8:17];
+
+							for(int i=0;i<16;i=i+2) begin
+								if(ra[(i*8) +: 16] == tmp[0:15]) begin
+									rt_delay[0][(i*8) +: 16] = 16'hFFFF;
+								end
+								else begin
+									rt_delay[0][(i*8) +: 16] = 16'h0000;
+								end
+							end
+
+							$display("ceqhi rt, ra, imm10");
+							$display("ra = %h",ra);
+							$display("rb = %h",rb);
+							$display("rt_delay = %h",rt_delay[0]);
+						end
+
+						8'b01111100 : begin // ceqi rt, ra, imm10 Compare Equal Word Immediate
+							$display("ceqi rt, ra, rb");
+							for(int i=0;i<22;i=i+1) begin
+								tmp[i] =  imm[8];
+							end
+							// $display("tmp = %h",tmp[0:31]);
+							tmp[22:31] = imm[8:17];
+							for(int i=0;i<16;i=i+4) begin
+								if(ra[(i*8) +: 32] == tmp[0:31]) begin
+									rt_delay[0][(i*8) +: 32] = 32'hFFFFFFFF;
+								end
+								else begin
+									rt_delay[0][(i*8) +: 32] = 32'h00000000;
+								end
+							end
+
+							$display("ra = %h",ra);
+							$display("tmp = %h",tmp[0:31]);
+							$display("rt_delay = %h",rt_delay[0]);
+						end
+
+						8'b01001110 : begin // cgtbi rt, ra, imm10 Compare Greater Than Byte Immediate
+							$display("cgtbi rt, ra, imm10");
+							for(int i=0;i<16;i=i+1) begin
+								if($signed(ra[(i*8) +: 8]) > $signed(imm[10:17])) begin
+									rt_delay[0][(i*8) +: 8] = 8'hFF;
+								end
+								else begin
+									rt_delay[0][(i*8) +: 8] = 8'h00;
+								end
+							end
+
+							$display("ra = %h",ra);
+							$display("imm = %h %d ",$signed(imm[10:17]),$signed(imm[10:17]));
+							$display("rt_delay = %h",rt_delay[0]);
+						end
+
+
+						8'b01001101 : begin // cgthi rt, ra, imm10 Compare Greater Than Halfword Immediate
+							$display("cgthi rt, ra, imm10");
+							for(int i=0;i<6;i=i+1) begin
+								tmp[i] =  imm[8];
+							end
+							tmp[6:15] = imm[8:17];
+							for(int i=0;i<16;i=i+2) begin
+								if($signed(ra[(i*8) +: 16]) > $signed(tmp[0:15])) begin
+									rt_delay[0][(i*8) +: 16] = 16'hFFFF;
+								end
+								else begin
+									rt_delay[0][(i*8) +: 16] = 16'h0000;
+								end
+							end
+
+							$display("ra = %h",ra);
+							$display("imm = %h %d ",$signed(imm[10:17]),$signed(imm[10:17]));
+							$display("rt_delay = %h",rt_delay[0]);
+						end
+
+						8'b01001100 : begin // cgti rt, ra, imm10 Compare Greater Than Word Immediate
+							$display("cgti rt, ra, imm10");
+
+							for(int i=0;i<22;i=i+1) begin
+								tmp[i] =  imm[8];
+							end
+							tmp[22:31] = imm[8:17];
+
+							for(int i=0;i<16;i=i+4) begin
+								if($signed(ra[(i*8) +: 32]) > $signed(tmp[0:31])) begin
+									rt_delay[0][(i*8) +: 32] = 32'hFFFFFFFF;
+								end
+								else begin
+									rt_delay[0][(i*8) +: 32] = 32'h00000000;
+								end
+							end
+
+							$display("ra = %h",ra);
+							$display("imm %b ",imm[8:17]);
+							$display("tmp = %h %d ", $signed(tmp[0:31]), $signed(tmp[0:31]));
+							$display("rt_delay = %h",rt_delay[0]);
+						end
+
+
+						8'b01011110 : begin //clgtbi rt, ra, imm10 Compare Logical Greater Than Byte Immediate
+							$display("clgtbi rt, ra, imm10");
+							for(int i=0;i<16;i=i+1) begin
+								if($unsigned(ra[(i*8) +: 8]) > $unsigned(imm[10:17])) begin
+									rt_delay[0][(i*8) +: 8] = 8'hFF;
+								end
+								else begin
+									rt_delay[0][(i*8) +: 8] = 8'h00;
+								end
+							end
+
+							$display("ra = %h",ra);
+							$display("imm = %h %d %b",$unsigned(imm[10:17]),$unsigned(imm[10:17]),$unsigned(imm[10:17]));
+							$display("rt_delay = %h",rt_delay[0]);
+						end
+
+						8'b01011101 : begin // clgthi rt, ra, imm10 Compare Logical Greater Than Halfword Immediate
+							$display("clgthi rt, ra, imm10");
+							for(int i=0;i<6;i=i+1) begin
+								tmp[i] =  imm[8];
+							end
+							tmp[6:15] = imm[8:17];
+							for(int i=0;i<16;i=i+2) begin
+								if($unsigned(ra[(i*8) +: 16]) > $unsigned(tmp[0:15])) begin
+									rt_delay[0][(i*8) +: 16] = 16'hFFFF;
+								end
+								else begin
+									rt_delay[0][(i*8) +: 16] = 16'h0000;
+								end
+							end
+
+							$display("ra = %h",ra);
+							$display("imm = %h %d ",$unsigned(imm[10:17]),$unsigned(imm[10:17]));
+							$display("rt_delay = %h",rt_delay[0]);
+						end
+
+						8'b01011100 : begin // clgti rt, ra, imm10 Compare Logical Greater Than Word Immediate
+							$display("clgti rt, ra, imm10");
+
+							for(int i=0;i<22;i=i+1) begin
+								tmp[i] =  imm[8];
+							end
+							tmp[22:31] = imm[8:17];
+
+							for(int i=0;i<16;i=i+4) begin
+								if($unsigned(ra[(i*8) +: 32]) > $unsigned(tmp[0:31])) begin
+									rt_delay[0][(i*8) +: 32] = 32'hFFFFFFFF;
+								end
+								else begin
+									rt_delay[0][(i*8) +: 32] = 32'h00000000;
+								end
+							end
+
+							$display("ra = %h",ra);
+							$display("tmp = %h %d ",$unsigned(tmp[0:31]),$unsigned(tmp[0:31]));
+							$display("rt_delay = %h",rt_delay[0]);
+
+						end
 						default begin
 							rt_delay[0] = 0;
 							rt_addr_delay[0] = 0;
 							reg_write_delay[0] = 0;
+							tmp=0;
 						end
-
 					endcase
 				end
-				//else if (format == 5) begin
-				//end
+				else if (format == 5) begin
+					case (op)
+						9'b010000011: begin // ilh rt, imm16 Immediate Load Halfword
+						$display(" ilh rt, imm16 ");
+							for(int i=0;i<16;i=i+2) begin
+								rt_delay[0][(i*8) +: 16] = imm[2:17];
+							end
+							$display("rt_delay[0] %b %h %d ",rt_delay[0],rt_delay[0],rt_delay[0]);
+							$display("imm %b %h %d ",imm[2:17],imm[2:17],imm[2:17]);
+						end
+						9'b010000010: begin // ilhu rt, imm16 Immediate Load Halfword Upper
+						$display("ilhu rt, imm16 ");
+							for(int i=0;i<16;i=i+4) begin
+								rt_delay[0][(i*8) +: 32] = {imm[2:17],16'h0000};
+							end
+							$display("rt_delay[0] %b %h %d ",rt_delay[0],rt_delay[0],rt_delay[0]);
+							$display("imm %b %h %d ", {imm[2:17],16'h0000},{imm[2:17],16'h0000},{imm[2:17],16'h0000});
+						end
+						// 9'b011000001: begin // iohl rt, imm16 Immediate Or Halfword Lower
+						// $display("iohl rt, imm16");
+						// 	for(int i=0;i<16;i=i+4) begin
+						// 		rt_delay[0][(i*8) +: 32] = rt_delay[0][(i*8) +: 32] | {16'h0000,imm[2:17]};
+						// 	end
+						// 	$display("rt_delay[0] %b %h %d ",rt_delay[0],rt_delay[0],rt_delay[0]);
+						// 	$display("imm %b %h %d ", {imm[2:17],16'h0000},{imm[2:17],16'h0000},{imm[2:17],16'h0000});
+						// end
+						default begin
+							rt_delay[0] = 0;
+							rt_addr_delay[0] = 0;
+							reg_write_delay[0] = 0;
+							tmp=0;
+						end
+					endcase
+
+				end
 				//else if (format == 6) begin
 				//end
 			end

@@ -147,6 +147,153 @@ module tb_SimpleFixed1();
 			ra = 128'hFFFFFFFF7FFF7FFF7FFF7FFF7FFFFFFF;
 			imm = 10'b0000000111;
 		@(posedge clk);
+		// andhi rt, ra, imm10 And Halfword Immediate
+		#1; op = 8'b00010101;
+			format = 4;
+			ra = 128'hFFFFFFFF7FFF7FFF7FFF7FFF7FFFFFFF;
+			imm = 10'b0000000111;
+		@(posedge clk);
+		// andhi rt, ra, imm10 And Halfword Immediate
+		#1; op = 8'b00010101;
+			format = 4;
+			ra = 128'hFFFFFFFF7FFF7FFF7FFF7FFF7FFFFFFF;
+			imm = 10'b1000000111;
+
+		@(posedge clk);
+		// andhi rt, ra, imm10 And Halfword Immediate
+		#1; op = 8'b00010100;
+			format = 4;
+			ra = 128'hFFFFFFFF7FFF7FFF7FFF7FFF7FFFFFFF;
+			imm = 10'b1000000111;
+
+		@(posedge clk);
+		// andi rt, ra, imm10 And Word Immediate
+		#1; op = 8'b00010100;
+			format = 4;
+			ra = 128'hFFFFFFFF7FFF7FFF7FFF7FFF7FFFFFFF;
+			imm = 10'b1000000111;
+
+		@(posedge clk);
+		// ori rt, ra, imm10 Or Byte Immediate
+		#1; op = 8'b00000110;
+			format = 4;
+			ra = 128'hFFFFFFFF7FFF7FFF7FFF7FFF7FFFFFFF;
+			imm = 10'b1011111111;
+
+		@(posedge clk);
+		// orhi rt, ra, imm10 Or Halfword Immediate
+		#1; op = 8'b00000101;
+			format = 4;
+			ra = 128'hFEFFFFFF7FFF7FFF7FFF7FFF7FFFFFFF;
+			imm = 10'b1011111111;
+
+		@(posedge clk);
+		// ori rt, ra, imm10 Or Word Immediate
+		#1; op = 8'b00000100;
+			format = 4;
+			ra = 128'hFEFFFFFF7FFF7FFF7FFF7FFF7FFFFFFF;
+			imm = 10'b1011111111;
+
+		@(posedge clk);
+		// xorbi rt, ra, imm10 Exclusive Or Byte Immediate
+		#1; op = 8'b01000110;
+			format = 4;
+			ra = 128'hFEFFFFFF7FFF7FFF7FFF7FFF7FFFFFFF;
+			imm = 10'b1011111111;
+
+		@(posedge clk);
+ 		// xorhi rt, ra, imm10 Xor Halfword Immediate
+ 		#1; op = 8'b01000101;
+			format = 4;
+			ra = 128'hFEFFFFFF7FFF7FFF7FFF7FFF7FFFFFFF;
+			imm = 10'b1011111111;
+
+		@(posedge clk);
+		// xori rt, ra, imm10 Xor Word Immediate
+ 		#1; op = 8'b01000100;
+			format = 4;
+			ra = 128'hFEFFFFFF7FFF7FFF7FFF7FFF7FFFFFFF;
+			imm = 10'b1011111111;
+
+		@(posedge clk);
+ 		// ceqbi rt, ra, imm10 Compare Equal Byte Immediate
+ 		#1; op = 8'b01111110;
+			format = 4;
+			ra = 128'hFEFFFFFF7FFF7FFF7FFF7FFF7FFFFFFF;
+			imm = 10'b1011111111;
+
+		@(posedge clk);
+ 		// ceqhi rt, ra, imm10 Compare Equal Halfword Immediate
+ 		#1; op = 8'b01111101;
+			format = 4;
+			ra = 128'hFEFFFFFF7FFF7FFF7FFF7FFF7FFFFFFF;
+			imm = 10'b1011111111;
+
+		@(posedge clk);
+ 		// ceqi rt, ra, imm10 Compare Equal Word Immediate
+ 		#1; op = 8'b01111100;
+			format = 4;
+			ra = 128'hFFFFFFFF7FFF7FFF7FFF7FFF7FFFFFFF;
+			imm = 10'b1111111111;
+
+		@(posedge clk);
+		// cgtbi rt, ra, imm10 Compare Greater Than Byte Immediate
+ 		#1; op = 8'b01001110;
+			format = 4;
+			ra = 128'hFFFFFFFF7FFF7FFF7FFF7FFF7FFFFFFF;
+			imm = 10'b1111111111;
+		@(posedge clk);
+		// cgthi rt, ra, imm10 Compare Greater Than Halfword Immediate
+ 		#1; op = 8'b01001101;
+			format = 4;
+			ra = 128'hFFFFFFFF7FFF7FFF7FFF7FFF7FFF1FFF;
+			imm = 10'b1111111111;
+		@(posedge clk);
+		// cgti rt, ra, imm10 Compare Greater Than Word Immediate
+ 		#1; op = 8'b01001100;
+			format = 4;
+			ra = 128'hFFFFFFFF7FFF7FFF7FFF7FFFFFFF1FFF;
+			imm = 10'b0111111111;
+
+		@(posedge clk);
+		//clgtbi rt, ra, imm10 Compare Logical Greater Than Byte Immediate
+ 		#1; op = 8'b01011110;
+			format = 4;
+			ra = 128'hFFFFFFFF7FFF7FFF7FFF7FFF7FFFFFFF;
+			imm = 10'b1101111111;
+
+		@(posedge clk);
+		// clgthi rt, ra, imm10 Compare Logical Greater Than Halfword Immediate
+ 		#1; op = 8'b01001101;
+			format = 4;
+			ra = 128'hFFFFFFFF7FFF7FFF7FFF7FFF7FFF1FFF;
+			imm = 10'b1111111111;
+
+		@(posedge clk);
+		// clgti rt, ra, imm10 Compare Logical Greater Than Word Immediate
+
+ 		#1; op = 8'b01011100;
+			format = 4;
+			ra = 128'hFFFFFFFF7FFF7FFF7FFF7FFFFFFF1FFF;
+			imm = 10'b0111111111;
+
+		@(posedge clk);
+		//  ilh rt, imm16 Immediate Load Halfword
+
+ 		#1; op = 9'b010000011;
+			format = 5;
+			ra = 128'hFFFFFFFF7FFF7FFF7FFF7FFFFFFF1FFF;
+			imm = 16'b0110011001100110;
+
+		@(posedge clk);
+		// ilh rt, imm16 Immediate Load Halfword
+
+ 		#1; op = 9'b010000010;
+			format = 5;
+			ra = 128'hFFFFFFFF7FFF7FFF7FFF7FFFFFFF1FFF;
+			imm = 16'b0110011001100110;
+
+		@(posedge clk);
 		#1; op=0;
 		@(posedge clk);
 		#100; $stop; // Stop simulation
