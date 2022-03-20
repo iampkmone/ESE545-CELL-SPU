@@ -32,41 +32,69 @@ module tb_SinglePrecision();
 			rb = %h, imm = %h, reg_write = %h, rt_wb = %h, rt_addr_wb = %h,
 			reg_write_wb = %h", $time, reset, format, op, rt_addr, ra, rb, imm, reg_write,
 			rt_wb, rt_addr_wb, reg_write_wb);
-		//for (int i=0; i<8; i++)
-		//	rb[i*16 +:16] = rb[i*16 +:16] + 1;
 	end
 		
 	initial begin
-				reset = 1;
+		reset = 1;
 		format = 3'b000;
-		op = 11'b01111000100;						//shlh
+		op = 11'b01111000100;						//mpy
 		rt_addr = 7'b0000011;						//RT = $r3
-		ra = 128'h80000001000100010001000100010001;	//Halfwords: 16'h0010
-		rb = 128'h00000002000100010001000100010001;	//Halfwords: 16'h0001
-		rc = 0;
-		imm = 0;
+		ra = 128'h00000007FFFFFFFF000A0009FFFFFFF5;	//Halfwords: 16'h0010
+		rb = 128'h00000002000100030004000500060008;	//Halfwords: 16'h0001
+		rc = 128'h000000020001000200040002FFF60002;
+		imm = 42;
 		reg_write = 1;
 		
 		#6;
 		reset = 0;									//@11ns, enable unit
 		
 		@(posedge clk); #1;
-		op = 0;										//@16ns, instr = nop
-	
+		op = 11'b01111001100;						//mpyu
+		@(posedge clk); #1;
+		op = 11'b01111000101;						//mpyh
+		@(posedge clk); #1;
+		format = 1;
+		op = 4'b1100;								//mpya
+		@(posedge clk); #1;
+		format = 4;
+		op = 8'b01110100;							//mpyi
+		@(posedge clk); #1;
+		op = 8'b01110101;							//mpyui
+		@(posedge clk); #1;
+		op = 0;										//nop
 		@(posedge clk);
-		#1; op = 11'b01111000100;
 		@(posedge clk);
-		//#1; op = 0;
-		@(posedge clk);
-		#1; op = 11'b01011000100;
-		rt_addr = 14;
-		@(posedge clk);
-		//#1; op = 0;
-		@(posedge clk);
-		#1; op = 11'b01011000100;
-		@(posedge clk);
-		#1; op = 0;
-		@(posedge clk);
-		#100; $stop; // Stop simulation
+		@(posedge clk); #1;
+		format = 3'b000;
+		op = 11'b01011000100;						//fa
+		rt_addr = 7'b0000011;						//RT = $r3
+		ra = 128'h4228000040647ae1bfc00000bb83126f;	//42, ~3.57, -1.5, ~-0.004
+		rb = 128'h42480000000000003e4ccccdbb83126f;	//50, 0, ~0.2, ~-0.004
+		rc = 128'hc12000003dcccccd49742400bd800000; //-10, ~0.1, 1000000, -0.625
+		imm = 173;
+		@(posedge clk); #1;
+		op = 11'b01011000101;						//fs
+		@(posedge clk); #1;
+		op = 11'b01011000110;						//fm
+		@(posedge clk); #1;
+		op = 11'b01111000010;						//fceq
+		@(posedge clk); #1;
+		op = 11'b01011000010;						//fcgt
+		@(posedge clk); #1;
+		format = 1;
+		op = 4'b1110;								//fma
+		@(posedge clk); #1;
+		op = 4'b1111;								//fms
+		@(posedge clk); #1;
+		format = 3;
+		op = 10'b0111011000;						//cflts
+		@(posedge clk); #1;
+		op = 10'b0111011001;						//cfltu
+		@(posedge clk); #1;
+		op = 0;
+		
+		
+		
+		#200; $stop; // Stop simulation
 	end
 endmodule
