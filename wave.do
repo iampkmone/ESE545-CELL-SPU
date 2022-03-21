@@ -21,6 +21,12 @@ add wave -noupdate /tb_Pipes/dut/rc_even
 add wave -noupdate /tb_Pipes/dut/ra_odd
 add wave -noupdate /tb_Pipes/dut/rb_odd
 add wave -noupdate /tb_Pipes/dut/rt_st_odd
+add wave -noupdate /tb_Pipes/dut/ra_even_fwd
+add wave -noupdate /tb_Pipes/dut/rb_even_fwd
+add wave -noupdate /tb_Pipes/dut/rc_even_fwd
+add wave -noupdate /tb_Pipes/dut/ra_odd_fwd
+add wave -noupdate /tb_Pipes/dut/rb_odd_fwd
+add wave -noupdate /tb_Pipes/dut/rt_st_odd_fwd
 add wave -noupdate -radix decimal /tb_Pipes/dut/imm_even
 add wave -noupdate -radix decimal /tb_Pipes/dut/imm_odd
 add wave -noupdate /tb_Pipes/dut/reg_write_even
@@ -39,7 +45,7 @@ add wave -noupdate /tb_Pipes/dut/od/fw_wb
 add wave -noupdate -radix decimal /tb_Pipes/dut/od/fw_addr_wb
 add wave -noupdate -radix binary /tb_Pipes/dut/od/fw_write_wb
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {5 ns} 0}
+WaveRestoreCursors {{Cursor 1} {95 ns} 0}
 quietly wave cursor active 1
 configure wave -namecolwidth 223
 configure wave -valuecolwidth 271

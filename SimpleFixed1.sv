@@ -31,12 +31,15 @@ module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_wri
 	logic [0:128] tmp;
 
 	// TODO : Implement all instr
+	
+	always_comb begin
+		rt_wb = rt_delay[1];
+		rt_addr_wb = rt_addr_delay[1];
+		reg_write_wb = reg_write_delay[1];
+	end
 
 	always_ff @(posedge clk) begin
 		if (reset == 1) begin
-			rt_wb = 0;
-			rt_addr_wb = 0;
-			reg_write_wb = 0;
 			rt_delay[1] <= 0;
 			rt_addr_delay[1] <= 0;
 			reg_write_delay[1] <= 0;
@@ -46,25 +49,18 @@ module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_wri
 			tmp = 0;
 		end
 		else begin
-			rt_wb <= rt_delay[1];
-			rt_addr_wb <= rt_addr_delay[1];
-			reg_write_wb <= reg_write_delay[1];
 			rt_delay[1] <= rt_delay[0];
 			rt_addr_delay[1] <= rt_addr_delay[0];
 			reg_write_delay[1] <= reg_write_delay[0];
 
-			rt_wb = rt_delay[1];
-			rt_addr_wb = rt_addr_delay[1];
-			reg_write_wb = reg_write_delay[1];
-
 			if (format == 0 && op == 0) begin					//nop : No Operation (Execute)
-				rt_delay[0] = 0;
-				rt_addr_delay[0] = 0;
-				reg_write_delay[0] = 0;
+				rt_delay[0] <= 0;
+				rt_addr_delay[0] <= 0;
+				reg_write_delay[0] <= 0;
 			end
 			else begin
-				rt_addr_delay[0] = rt_addr;
-				reg_write_delay[0] = reg_write;
+				rt_addr_delay[0] <= rt_addr;
+				reg_write_delay[0] <= reg_write;
 				if (format == 0) begin
 					case (op)
 						11'b00011001000 : begin					//ah : Add Halfword
@@ -143,6 +139,8 @@ module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_wri
 										end
 								end
 								$display("add word  ra = %b rb = %b rt_delay[0] =  %b ", $signed(ra[(i*32) +: 32]) ,$signed(rb[(i*32) +: 32]),$signed(rt_delay[0][(i*32) +: 32]));
+ 
+ 
 							end
 							$display("ra %h rb %h rt_delay %h ",ra,rb,rt_delay[0]);
 							$display("ra %d rb %d rt_delay %d ",$signed(ra),$signed(rb),$signed(rt_delay[0]));
@@ -403,9 +401,9 @@ module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_wri
 							$display("rt_delay = %h",rt_delay[0]);
 						end
 						default begin
-							rt_delay[0] = 0;
-							rt_addr_delay[0] = 0;
-							reg_write_delay[0] = 0;
+							rt_delay[0] <= 0;
+							rt_addr_delay[0] <= 0;
+							reg_write_delay[0] <= 0;
 						end
 					endcase
 				end

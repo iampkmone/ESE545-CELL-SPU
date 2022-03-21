@@ -25,12 +25,15 @@ module Permute(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, r
 	logic [0:127] tmp;
 
 	// TODO : Implement all instr
+	
+	always_comb begin
+		rt_wb = rt_delay[3];
+		rt_addr_wb = rt_addr_delay[3];
+		reg_write_wb = reg_write_delay[3];
+	end
 
 	always_ff @(posedge clk) begin
 		if (reset == 1) begin
-			rt_wb = 0;
-			rt_addr_wb = 0;
-			reg_write_wb = 0;
 			rt_delay[3] <= 0;
 			rt_addr_delay[3] <= 0;
 			reg_write_delay[3] <= 0;
@@ -43,10 +46,6 @@ module Permute(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, r
 
 		end
 		else begin
-			rt_wb = rt_delay[3];
-			rt_addr_wb = rt_addr_delay[3];
-			reg_write_wb = reg_write_delay[3];
-
 			rt_delay[3] <= rt_delay[2];
 			rt_addr_delay[3] <= rt_addr_delay[2];
 			reg_write_delay[3] <= reg_write_delay[2];
@@ -60,17 +59,17 @@ module Permute(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, r
 			reg_write_delay[1] <= reg_write_delay[0];
 
 			if (format == 0 && op == 0) begin					//nop : No Operation (Load)
-				rt_delay[0] = 0;
-				rt_addr_delay[0] = 0;
-				reg_write_delay[0] = 0;
+				rt_delay[0] <= 0;
+				rt_addr_delay[0] <= 0;
+				reg_write_delay[0] <= 0;
 			end
 			else begin
-				rt_addr_delay[0] = rt_addr;
-				reg_write_delay[0] = reg_write;
+				rt_addr_delay[0] <= rt_addr;
+				reg_write_delay[0] <= reg_write;
 				if (format == 0) begin
 					case (op)
 						11'b00111011011 : begin					//shlqbi : Shift Left Quadword by Bits
-							rt_delay[0] = ra << rb[29:31];
+							rt_delay[0] <= ra << rb[29:31];
 						end
                         11'b00111011111 : begin                 //shlqby rt, ra, rb : Shift Left Quadword by Bytes
                             rt_delay[0] = ra << rb[27:31];
@@ -176,9 +175,9 @@ module Permute(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, r
 							// $display("rt_delay = %b",rt_delay[0]);
                         end
 						default begin
-							rt_delay[0] = 0;
-							rt_addr_delay[0] = 0;
-							reg_write_delay[0] = 0;
+							rt_delay[0] <= 0;
+							rt_addr_delay[0] <= 0;
+							reg_write_delay[0] <= 0;
 						end
 					endcase
 				end
