@@ -64,8 +64,42 @@ module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_wri
 				if (format == 0) begin
 					case (op)
 						11'b00011001000 : begin					//ah : Add Halfword
-							for (i=0; i<8; i=i+1) begin
-								rt_delay[0][(i*16) +: 16] <= $signed(ra[(i*16) +: 16]) + $signed(rb[(i*16) +: 16]);
+							$display("ah ");
+							$display("ra = %h rb = %h",ra,rb);
+							for (i=0; i<16; i=i+2) begin
+								if((($signed(ra[(i*8) +: 16]) ^ $signed(rb[(i*8) +: 16])) & mask[0:15]) ==0) begin
+									if($signed(ra[(i*8) +: 16]) >=0) begin
+										$display("pos %b %b ",$signed(max_value_16),$signed(max_value_16)-$signed(ra[(i*8) +: 16]));
+										if(($signed(max_value_16)-$signed(ra[(i*8) +: 16])) >= $signed(rb[(i*8) +: 16])) begin
+											rt_delay[0][(i*8) +: 16] = $signed(ra[(i*8) +: 16]) + $signed(rb[(i*8) +: 16]) ;
+										end
+										else begin
+											rt_delay[0][(i*8) +: 16] = max_value_16;
+										end
+									end
+									else begin
+										$display("neg %b %b",$signed(min_value_16),($signed(min_value_16)-$signed(ra[(i*8) +: 16])));
+										if(($signed(min_value_16)-$signed(ra[(i*8) +: 16])) <= $signed(rb[(i*8) +: 16])) begin
+											$display("compute");
+											rt_delay[0][(i*8) +: 16] = $signed(ra[(i*8) +: 16]) + $signed(rb[(i*8) +: 16]) ;
+										end
+										else begin
+											rt_delay[0][(i*8) +: 16] = min_value_16;
+										end
+									end
+								end
+								else begin
+										$display("sign mismatch");
+										if(ra[i*8]==1) begin
+											$display("ra neg");
+											rt_delay[0][(i*8) +: 16]  =  rb[(i*8) +: 16] + ((~ra[(i*8) +: 16])+1);
+										end
+										else begin
+											$display("rb neg %b ",(~rb[(i*8) +: 16])+1);
+											rt_delay[0][(i*8) +: 16]  =  ra[(i*8) +: 16] + ((~rb[(i*8) +: 16])+1);
+										end
+								end
+								$display("add half word  ra = %b rb = %b rt_delay[0] =  %b ", $signed(ra[(i*8) +: 16]) ,$signed(rb[(i*8) +: 16]),$signed(rt_delay[0][(i*8) +: 16]));
 							end
 							$display("ra %h rb %h rt_delay %h ",ra,rb,rt_delay[0]);
 						end
@@ -105,6 +139,8 @@ module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_wri
 										end
 								end
 								$display("add word  ra = %b rb = %b rt_delay[0] =  %b ", $signed(ra[(i*32) +: 32]) ,$signed(rb[(i*32) +: 32]),$signed(rt_delay[0][(i*32) +: 32]));
+
+
 							end
 							$display("ra %h rb %h rt_delay %h ",ra,rb,rt_delay[0]);
 							$display("ra %d rb %d rt_delay %d ",$signed(ra),$signed(rb),$signed(rt_delay[0]));

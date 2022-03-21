@@ -24,10 +24,6 @@ module SinglePrecision(clk, reset, op, format, rt_addr, ra, rb, rc, imm, reg_wri
 	logic [6:0]			reg_write_delay;	//Will rt_wb write to RegTable
 	logic [6:0]			int_delay;			//1 if int op, 0 if else
 	
-	logic [6:0]			i;					//7-bit counter for loops
-	
-	// TODO : Implement all instr
-	
 	always_comb begin
 		if (int_delay[6] == 1) begin			//FP7 writeback (only for int ops)
 			rt_int = rt_delay[6];
@@ -53,12 +49,16 @@ module SinglePrecision(clk, reset, op, format, rt_addr, ra, rb, rc, imm, reg_wri
 	end
 	
 	always_ff @(posedge clk) begin
+		integer scale;
+		shortreal tempfp;
+		logic [0:15] temp16;
+		
 		if (reset == 1) begin
 			rt_delay[6] <= 0;
 			rt_addr_delay[6] <= 0;
 			reg_write_delay[6] <= 0;
 			int_delay[6] <= 0;
-			for (i=0; i<6; i=i+1) begin
+			for (int i=0; i<6; i=i+1) begin
 				rt_delay[i] <= 0;
 				rt_addr_delay[i] <= 0;
 				reg_write_delay[i] <= 0;
@@ -70,7 +70,7 @@ module SinglePrecision(clk, reset, op, format, rt_addr, ra, rb, rc, imm, reg_wri
 			rt_addr_delay[6] <= rt_addr_delay[5];
 			reg_write_delay[6] <= reg_write_delay[5];
 			int_delay[6] <= int_delay[5];
-			for (i=0; i<5; i=i+1) begin
+			for (int i=0; i<5; i=i+1) begin
 				rt_delay[i+1] <= rt_delay[i];
 				rt_addr_delay[i+1] <= rt_addr_delay[i];
 				reg_write_delay[i+1] <= reg_write_delay[i];
@@ -90,24 +90,86 @@ module SinglePrecision(clk, reset, op, format, rt_addr, ra, rb, rc, imm, reg_wri
 					case (op)
 						11'b01111000100 : begin					//mpy : Multiply
 							int_delay[0] <= 1;
-							for (i=0; i<4; i=i+1)
-								rt_delay[0][(i*32) +: 32] <= ra[(i*32)+16 +: 16] * rb[(i*32)+16 +: 16];
+							for (int i=0; i<4; i=i+1)
+								rt_delay[0][(i*32) +: 32] <= $signed(ra[(i*32)+16 +: 16]) * $signed(rb[(i*32)+16 +: 16]);
+						end
+						11'b01111001100 : begin					//mpyu : Multiply Unsigned
+							int_delay[0] <= 1;
+							for (int i=0; i<4; i=i+1)
+								rt_delay[0][(i*32) +: 32] <= $unsigned(ra[(i*32)+16 +: 16]) * $unsigned(rb[(i*32)+16 +: 16]);
+						end
+						11'b01111000101 : begin					//mpyh : Multiply High
+							int_delay[0] <= 1;
+							for (int i=0; i<4; i=i+1)
+								rt_delay[0][(i*32) +: 32] <= ($signed(ra[(i*32) +: 16]) * $signed(rb[(i*32)+16 +: 16])) << 16;
 						end
 						11'b01011000100 : begin					//fa : Floating Add
 							int_delay[0] <= 0;
-							for (i=0; i<4; i=i+1) begin
+							for (int i=0; i<4; i=i+1) begin
 								if (($bitstoshortreal(ra[(i*32) +: 32]) + $bitstoshortreal(rb[(i*32) +: 32])) >= $bitstoshortreal(32'h7F7FFFFF))
 									rt_delay[0][(i*32) +: 32] <= 32'h7F7FFFFF;
-								else if (($bitstoshortreal(ra[(i*32) +: 32]) + $bitstoshortreal(rb[(i*32) +: 32])) <= $bitstoshortreal(32'h8F7FFFFF))
+								else if (($bitstoshortreal(ra[(i*32) +: 32]) + $bitstoshortreal(rb[(i*32) +: 32])) <= $bitstoshortreal(32'hFF7FFFFF))
 									rt_delay[0][(i*32) +: 32] <= 32'hFF7FFFFF;
 								else if (($bitstoshortreal(ra[(i*32) +: 32]) + $bitstoshortreal(rb[(i*32) +: 32])) <= $bitstoshortreal(32'h00000001)
-									&& ($bitstoshortreal(ra[(i*32) +: 32]) + $bitstoshortreal(rb[(i*32) +: 32])) >= 0)
+									&& ($bitstoshortreal(ra[(i*32) +: 32]) + $bitstoshortreal(rb[(i*32) +: 32])) > 0)
 									rt_delay[0][(i*32) +: 32] <= 32'h00000001;
 								else if (($bitstoshortreal(ra[(i*32) +: 32]) + $bitstoshortreal(rb[(i*32) +: 32])) >= $bitstoshortreal(32'h80000001)
-									&& ($bitstoshortreal(ra[(i*32) +: 32]) + $bitstoshortreal(rb[(i*32) +: 32])) <= 0)
+									&& ($bitstoshortreal(ra[(i*32) +: 32]) + $bitstoshortreal(rb[(i*32) +: 32])) < 0)
 									rt_delay[0][(i*32) +: 32] <= 32'h80000001;
 								else
 								rt_delay[0][(i*32) +: 32] <= $shortrealtobits($bitstoshortreal(ra[(i*32) +: 32]) + $bitstoshortreal(rb[(i*32) +: 32]));
+							end
+						end
+						11'b01011000101 : begin					//fs : Floating Subtract
+							int_delay[0] <= 0;
+							for (int i=0; i<4; i=i+1) begin
+								if (($bitstoshortreal(ra[(i*32) +: 32]) - $bitstoshortreal(rb[(i*32) +: 32])) >= $bitstoshortreal(32'h7F7FFFFF))
+									rt_delay[0][(i*32) +: 32] <= 32'h7F7FFFFF;
+								else if (($bitstoshortreal(ra[(i*32) +: 32]) - $bitstoshortreal(rb[(i*32) +: 32])) <= $bitstoshortreal(32'hFF7FFFFF))
+									rt_delay[0][(i*32) +: 32] <= 32'hFF7FFFFF;
+								else if (($bitstoshortreal(ra[(i*32) +: 32]) - $bitstoshortreal(rb[(i*32) +: 32])) <= $bitstoshortreal(32'h00000001)
+									&& ($bitstoshortreal(ra[(i*32) +: 32]) - $bitstoshortreal(rb[(i*32) +: 32])) > 0)
+									rt_delay[0][(i*32) +: 32] <= 32'h00000001;
+								else if (($bitstoshortreal(ra[(i*32) +: 32]) - $bitstoshortreal(rb[(i*32) +: 32])) >= $bitstoshortreal(32'h80000001)
+									&& ($bitstoshortreal(ra[(i*32) +: 32]) - $bitstoshortreal(rb[(i*32) +: 32])) < 0)
+									rt_delay[0][(i*32) +: 32] <= 32'h80000001;
+								else
+								rt_delay[0][(i*32) +: 32] <= $shortrealtobits($bitstoshortreal(ra[(i*32) +: 32]) - $bitstoshortreal(rb[(i*32) +: 32]));
+							end
+						end
+						11'b01011000110 : begin					//fm : Floating Multiply
+							int_delay[0] <= 0;
+							for (int i=0; i<4; i=i+1) begin
+								if (($bitstoshortreal(ra[(i*32) +: 32]) * $bitstoshortreal(rb[(i*32) +: 32])) >= $bitstoshortreal(32'h7F7FFFFF))
+									rt_delay[0][(i*32) +: 32] <= 32'h7F7FFFFF;
+								else if (($bitstoshortreal(ra[(i*32) +: 32]) * $bitstoshortreal(rb[(i*32) +: 32])) <= $bitstoshortreal(32'hFF7FFFFF))
+									rt_delay[0][(i*32) +: 32] <= 32'hFF7FFFFF;
+								else if (($bitstoshortreal(ra[(i*32) +: 32]) * $bitstoshortreal(rb[(i*32) +: 32])) <= $bitstoshortreal(32'h00000001)
+									&& ($bitstoshortreal(ra[(i*32) +: 32]) * $bitstoshortreal(rb[(i*32) +: 32])) > 0)
+									rt_delay[0][(i*32) +: 32] <= 32'h00000001;
+								else if (($bitstoshortreal(ra[(i*32) +: 32]) * $bitstoshortreal(rb[(i*32) +: 32])) >= $bitstoshortreal(32'h80000001)
+									&& ($bitstoshortreal(ra[(i*32) +: 32]) * $bitstoshortreal(rb[(i*32) +: 32])) < 0)
+									rt_delay[0][(i*32) +: 32] <= 32'h80000001;
+								else
+								rt_delay[0][(i*32) +: 32] <= $shortrealtobits($bitstoshortreal(ra[(i*32) +: 32]) * $bitstoshortreal(rb[(i*32) +: 32]));
+							end
+						end
+						11'b01111000010 : begin					//fceq : Floating Compare Equal
+							int_delay[0] <= 0;
+							for (int i=0; i<4; i=i+1) begin
+								if ($bitstoshortreal(ra[(i*32) +: 32]) == $bitstoshortreal(rb[(i*32) +: 32]))
+									rt_delay[0][(i*32) +: 32] <= 32'hFFFFFFFF;
+								else
+									rt_delay[0][(i*32) +: 32] <= 0;
+							end
+						end
+						11'b01011000010 : begin					//fcgt : Floating Compare Greater Than
+							int_delay[0] <= 0;
+							for (int i=0; i<4; i=i+1) begin
+								if ($bitstoshortreal(ra[(i*32) +: 32]) > $bitstoshortreal(rb[(i*32) +: 32]))
+									rt_delay[0][(i*32) +: 32] <= 32'hFFFFFFFF;
+								else
+									rt_delay[0][(i*32) +: 32] <= 0;
 							end
 						end
 						default begin
@@ -118,18 +180,120 @@ module SinglePrecision(clk, reset, op, format, rt_addr, ra, rb, rc, imm, reg_wri
 						end
 					endcase
 				end
-				//else if (format == 1) begin
-				//end
-				//else if (format == 2) begin
-				//end
-				//else if (format == 3) begin
-				//end
-				//else if (format == 4) begin
-				//end
-				//else if (format == 5) begin
-				//end
-				//else if (format == 6) begin
-				//end
+				else if (format == 1) begin
+					case (op[7:10])
+						4'b1100 : begin					//mpya : Multiply and Add
+							int_delay[0] <= 1;
+							for (int i=0; i<4; i=i+1)
+								rt_delay[0][(i*32) +: 32] <= ($signed(ra[(i*32)+16 +: 16]) * $signed(rb[(i*32)+16 +: 16])) + $signed(rc[(i*32) +: 32]);
+						end
+						4'b1110 : begin					//fma : Floating Multiply and Add
+							int_delay[0] <= 0;
+							for (int i=0; i<4; i=i+1) begin
+								if ((($bitstoshortreal(ra[(i*32) +: 32]) * $bitstoshortreal(rb[(i*32) +: 32])) + $bitstoshortreal(rc[(i*32) +: 32])) >= $bitstoshortreal(32'h7F7FFFFF))
+									rt_delay[0][(i*32) +: 32] <= 32'h7F7FFFFF;
+								else if ((($bitstoshortreal(ra[(i*32) +: 32]) * $bitstoshortreal(rb[(i*32) +: 32])) + $bitstoshortreal(rc[(i*32) +: 32])) <= $bitstoshortreal(32'hFF7FFFFF))
+									rt_delay[0][(i*32) +: 32] <= 32'hFF7FFFFF;
+								else if ((($bitstoshortreal(ra[(i*32) +: 32]) * $bitstoshortreal(rb[(i*32) +: 32])) + $bitstoshortreal(rc[(i*32) +: 32])) <= $bitstoshortreal(32'h00000001)
+									&& (($bitstoshortreal(ra[(i*32) +: 32]) * $bitstoshortreal(rb[(i*32) +: 32])) + $bitstoshortreal(rc[(i*32) +: 32])) > 0)
+									rt_delay[0][(i*32) +: 32] <= 32'h00000001;
+								else if ((($bitstoshortreal(ra[(i*32) +: 32]) * $bitstoshortreal(rb[(i*32) +: 32])) + $bitstoshortreal(rc[(i*32) +: 32])) >= $bitstoshortreal(32'h80000001)
+									&& (($bitstoshortreal(ra[(i*32) +: 32]) * $bitstoshortreal(rb[(i*32) +: 32])) + $bitstoshortreal(rc[(i*32) +: 32])) < 0)
+									rt_delay[0][(i*32) +: 32] <= 32'h80000001;
+								else
+								rt_delay[0][(i*32) +: 32] <= $shortrealtobits(($bitstoshortreal(ra[(i*32) +: 32]) * $bitstoshortreal(rb[(i*32) +: 32])) + $bitstoshortreal(rc[(i*32) +: 32]));
+							end
+						end
+						4'b1111 : begin					//fms : Floating Multiply and Subtract
+							int_delay[0] <= 0;
+							for (int i=0; i<4; i=i+1) begin
+								if ((($bitstoshortreal(ra[(i*32) +: 32]) * $bitstoshortreal(rb[(i*32) +: 32])) - $bitstoshortreal(rc[(i*32) +: 32])) >= $bitstoshortreal(32'h7F7FFFFF))
+									rt_delay[0][(i*32) +: 32] <= 32'h7F7FFFFF;
+								else if ((($bitstoshortreal(ra[(i*32) +: 32]) * $bitstoshortreal(rb[(i*32) +: 32])) - $bitstoshortreal(rc[(i*32) +: 32])) <= $bitstoshortreal(32'hFF7FFFFF))
+									rt_delay[0][(i*32) +: 32] <= 32'hFF7FFFFF;
+								else if ((($bitstoshortreal(ra[(i*32) +: 32]) * $bitstoshortreal(rb[(i*32) +: 32])) - $bitstoshortreal(rc[(i*32) +: 32])) <= $bitstoshortreal(32'h00000001)
+									&& (($bitstoshortreal(ra[(i*32) +: 32]) * $bitstoshortreal(rb[(i*32) +: 32])) - $bitstoshortreal(rc[(i*32) +: 32])) > 0)
+									rt_delay[0][(i*32) +: 32] <= 32'h00000001;
+								else if ((($bitstoshortreal(ra[(i*32) +: 32]) * $bitstoshortreal(rb[(i*32) +: 32])) - $bitstoshortreal(rc[(i*32) +: 32])) >= $bitstoshortreal(32'h80000001)
+									&& (($bitstoshortreal(ra[(i*32) +: 32]) * $bitstoshortreal(rb[(i*32) +: 32])) - $bitstoshortreal(rc[(i*32) +: 32])) < 0)
+									rt_delay[0][(i*32) +: 32] <= 32'h80000001;
+								else
+								rt_delay[0][(i*32) +: 32] <= $shortrealtobits(($bitstoshortreal(ra[(i*32) +: 32]) * $bitstoshortreal(rb[(i*32) +: 32])) - $bitstoshortreal(rc[(i*32) +: 32]));
+							end
+						end
+						default begin
+							int_delay[0] <= 0;
+							rt_delay[0] <= 0;
+							rt_addr_delay[0] <= 0;
+							reg_write_delay[0] <= 0;
+						end
+					endcase
+				end
+				else if (format == 3) begin
+					case (op[1:10])
+						10'b0111011000 : begin					//cflts : Convert Floating to Signed Integer
+							int_delay[0] <= 0;
+							for (int i=0; i<4; i=i+1) begin
+								scale = 173 - $unsigned(imm[10:17]);
+								if (scale > 127)
+									scale = 127;
+								else if (scale < 0)
+									scale = 0;
+								tempfp = $bitstoshortreal(ra[(i*32) +: 32]) * (2**scale);
+								if (tempfp > (2**31 - 1))
+									rt_delay[0][(i*32) +: 32] <= 32'h7FFFFFFF;
+								else if (tempfp < -(2**31))
+									rt_delay[0][(i*32) +: 32] <= 32'h80000000;
+								else
+									rt_delay[0][(i*32) +: 32] <= int'(tempfp);
+							end
+						end
+						10'b0111011001 : begin					//cfltu : Convert Floating to Unsigned Integer
+							int_delay[0] <= 0;
+							for (int i=0; i<4; i=i+1) begin
+								scale = 173 - $unsigned(imm[10:17]);
+								if (scale > 127)
+									scale = 127;
+								else if (scale < 0)
+									scale = 0;
+								tempfp = $bitstoshortreal(ra[(i*32) +: 32]) * (2**scale);// << scale;
+								if (tempfp > (2**31 - 1))
+									rt_delay[0][(i*32) +: 32] <= 32'h7FFFFFFF;
+								else if (tempfp < 0)
+									rt_delay[0][(i*32) +: 32] <= 0;
+								else
+									rt_delay[0][(i*32) +: 32] <= int'(tempfp);
+							end
+						end
+						default begin
+							int_delay[0] <= 0;
+							rt_delay[0] <= 0;
+							rt_addr_delay[0] <= 0;
+							reg_write_delay[0] <= 0;
+						end
+					endcase
+				end
+				else if (format == 4) begin
+					case (op[3:10])
+						8'b01110100 : begin					//mpyi : Multiply Immediate
+							int_delay[0] <= 1;
+							for (int i=0; i<4; i=i+1)
+								rt_delay[0][(i*32) +: 32] <= $signed(ra[(i*32)+16 +: 16]) * $signed(imm[8:17]);
+						end
+						8'b01110101 : begin					//mpyui : Multiply Unsigned Immediate
+							int_delay[0] <= 1;
+							temp16 = $signed(imm[8:17]);
+							for (int i=0; i<4; i=i+1)
+								rt_delay[0][(i*32) +: 32] <= $unsigned(ra[(i*32)+16 +: 16]) * $unsigned(temp16);
+						end
+						default begin
+							int_delay[0] <= 0;
+							rt_delay[0] <= 0;
+							rt_addr_delay[0] <= 0;
+							reg_write_delay[0] <= 0;
+						end
+					endcase
+				end
 			end
 		end
 	end

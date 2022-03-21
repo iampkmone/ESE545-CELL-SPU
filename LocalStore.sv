@@ -19,11 +19,9 @@ module LocalStore(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_write
 	logic [5:0][0:6]	rt_addr_delay;		//Destination register for rt_wb
 	logic [5:0]			reg_write_delay;	//Will rt_wb write to RegTable
 	
-	logic [15:0]		i, j;				//7-bit counters for loops
+	integer				i, j;				//7-bit counters for loops
 	
 	logic [0:7] mem [0:32735];				//32KB local memory
-	
-	// TODO : Implement all instr
 	
 	always_comb begin
 		rt_wb = rt_delay[5];
@@ -41,7 +39,7 @@ module LocalStore(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_write
 				rt_addr_delay[i] <= 0;
 				reg_write_delay[i] <= 0;
 			end
-			for (i=0; i<8192; i=i+1)
+			for (i=0; i<32736; i=i+1)
 				mem[i] <= 0;
 		end
 		else begin
@@ -83,18 +81,51 @@ module LocalStore(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_write
 						end
 					endcase
 				end
-				//else if (format == 1) begin
-				//end
-				//else if (format == 2) begin
-				//end
-				//else if (format == 3) begin
-				//end
-				//else if (format == 4) begin
-				//end
-				//else if (format == 5) begin
-				//end
-				//else if (format == 6) begin
-				//end
+				else if (format == 4) begin
+					case (op[3:10])
+						8'b00110100 : begin					//lqd : Load Quadword (d-form)
+							for (i=0; i<16; i=i+1) begin
+								rt_delay[0][(i*8) +: 8] <= mem[($signed((ra[0:31]) + $signed({imm[8:17], 4'h0})) & 32'hFFFFFFF0) + i];
+							end
+						end
+						8'b00100100 : begin					//stqd : Store Quadword (d-form)
+							for (i=0; i<16; i=i+1) begin
+								mem[($signed((ra[0:31]) + $signed({imm[8:17], 4'h0})) & 32'hFFFFFFF0) + i] <= rt_st[(i*8) +: 8];
+							end
+							reg_write_delay[0] <= 0;
+						end
+						default begin
+							rt_delay[0] <= 0;
+							rt_addr_delay[0] <= 0;
+							reg_write_delay[0] <= 0;
+						end
+					endcase
+				end
+				else if (format == 5) begin
+					case (op[2:10])
+						9'b001100001 : begin				//lqa : Load Quadword (a-form)
+							for (i=0; i<16; i=i+1) begin
+								rt_delay[0][(i*8) +: 8] <= mem[($signed({imm[2:17], 2'b00}) & 32'hFFFFFFF0) + i];
+							end
+						end
+						9'b001000001 : begin				//stqa : Store Quadword (a-form)
+							for (i=0; i<16; i=i+1) begin
+								mem[($signed({imm[2:17], 2'b00}) & 32'hFFFFFFF0) + i] <= rt_st[(i*8) +: 8];
+							end
+							reg_write_delay[0] <= 0;
+						end
+						default begin
+							rt_delay[0] <= 0;
+							rt_addr_delay[0] <= 0;
+							reg_write_delay[0] <= 0;
+						end
+					endcase
+				end
+				else begin
+					rt_delay[0] <= 0;
+					rt_addr_delay[0] <= 0;
+					reg_write_delay[0] <= 0;
+				end
 			end
 		end
 	end
