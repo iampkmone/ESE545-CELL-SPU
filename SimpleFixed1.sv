@@ -1,11 +1,11 @@
-module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb);
+module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb);
 	input			clk, reset;
 
 	//RF/FWD Stage
 	input [0:10]	op;				//Decoded opcode, truncated based on format
 	input [2:0]		format;			//Format of instr, used with op and imm
 	input [0:6]		rt_addr;		//Destination register address
-	input [0:127]	ra, rb;			//Values of source registers
+	input [0:127]	ra, rb, rt_st;		//Values of source registers
 	input [0:17]	imm;			//Immediate value, truncated based on format
 	input			reg_write;		//Will current instr write to RegTable
 
@@ -24,8 +24,8 @@ module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_
 	logic signed [31:0] min_value_32 = 32'h80000000;
 
 
-	logic signed [31:0] max_value_16 = 16'h7FFF;
-	logic signed [31:0] min_value_16 = 16'h8000;
+	logic signed [15:0] max_value_16 = 16'h7FFF;
+	logic signed [15:0] min_value_16 = 16'h8000;
 	logic signed [0:31] mask =1<<31;
 
 	logic [0:128] tmp;
@@ -68,43 +68,160 @@ module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_
 				if (format == 0) begin
 					case (op)
 						11'b00011001000 : begin					//ah : Add Halfword
-							for (i=0; i<8; i=i+1) begin
-								rt_delay[0][(i*16) +: 16] = $signed(ra[(i*16) +: 16]) + $signed(rb[(i*16) +: 16]);
-								$display("add word  ra = %b rb = %b rt_delay[0] =  %b", $signed(ra[(i*16) +: 16]) ,$signed(rb[(i*16) +: 16]),rt_delay[0][(i*16) +: 16]);
-							end
-						end
-						11'b00011000000 : begin					//ah : Add Word
-							// $display("add word");
-							for (i=0; i<4; i=i+1) begin
-								if(($signed(ra[(i*32) +: 32]) & mask[0:31] ) ^ ($signed(rb[(i*32) +: 32]) & mask[0:31] )==0) begin
-									if($signed(ra[(i*32) +: 32]) > 0 && ((max_value_32[31:0] - $signed(ra[(i*32) +: 32])) <= $signed(rb[(i*32) +: 32]))) begin
-										rt_delay[0][(i*32) +: 32] = max_value_32;
-										$display("pos ");
-
-									end
-									else if($signed(ra[(i*32) +: 32]) < 0 && ($signed(ra[(i*32) +: 32])==min_value_32[31:0] || $signed(rb[(i*32) +: 32])==min_value_32[31:0]  || ((min_value_32[31:0]-$signed(ra[(i*32) +: 32])) >= $signed(rb[(i*32) +: 32])))) begin
-										rt_delay[0][(i*32) +: 32] = min_value_32;
-										$display("neg ");
+							$display("ah ");
+							$display("ra = %h rb = %h",ra,rb);
+							for (i=0; i<16; i=i+2) begin
+								if((($signed(ra[(i*8) +: 16]) ^ $signed(rb[(i*8) +: 16])) & mask[0:15]) ==0) begin
+									if($signed(ra[(i*8) +: 16]) >=0) begin
+										$display("pos %b %b ",$signed(max_value_16),$signed(max_value_16)-$signed(ra[(i*8) +: 16]));
+										if(($signed(max_value_16)-$signed(ra[(i*8) +: 16])) >= $signed(rb[(i*8) +: 16])) begin
+											rt_delay[0][(i*8) +: 16] = $signed(ra[(i*8) +: 16]) + $signed(rb[(i*8) +: 16]) ;
+										end
+										else begin
+											rt_delay[0][(i*8) +: 16] = max_value_16;
+										end
 									end
 									else begin
-										$display("non overflow ");
-
-										rt_delay[0][(i*32) +: 32] = $signed(ra[(i*32) +: 32]) + $signed(rb[(i*32) +: 32]);
+										$display("neg %b %b",$signed(min_value_16),($signed(min_value_16)-$signed(ra[(i*8) +: 16])));
+										if(($signed(min_value_16)-$signed(ra[(i*8) +: 16])) <= $signed(rb[(i*8) +: 16])) begin
+											$display("compute");
+											rt_delay[0][(i*8) +: 16] = $signed(ra[(i*8) +: 16]) + $signed(rb[(i*8) +: 16]) ;
+										end
+										else begin
+											rt_delay[0][(i*8) +: 16] = min_value_16;
+										end
 									end
 								end
 								else begin
 										$display("sign mismatch");
-
-										rt_delay[0][(i*32) +: 32] = $signed(ra[(i*32) +: 32]) + $signed(rb[(i*32) +: 32]);
+										if(ra[i*8]==1) begin
+											$display("ra neg");
+											rt_delay[0][(i*8) +: 16]  =  rb[(i*8) +: 16] + ((~ra[(i*8) +: 16])+1);
+										end
+										else begin
+											$display("rb neg %b ",(~rb[(i*8) +: 16])+1);
+											rt_delay[0][(i*8) +: 16]  =  ra[(i*8) +: 16] + ((~rb[(i*8) +: 16])+1);
+										end
 								end
-								// rt_delay[0][(i*32) +: 32] = $signed(ra[(i*32) +: 32]) + $signed(rb[(i*32) +: 32]);
-								// rt_delay[0][(i*32) +: 32] = (ra[(i*32) +: 32]) + (rb[(i*32) +: 32]);
-								$display("add word  ra = %d rb = %d rt_delay[0] =  %d min_value_32[31:0] %d max_value_32[31:0] %d", $signed(ra[(i*32) +: 32]) ,$signed(rb[(i*32) +: 32]),rt_delay[0][(i*32) +: 32],min_value_32[31:0],max_value_32[31:0]);
-								$display("add word  ra = %h rb = %h rt_delay[0] =  %h min_value_32[31:0] %b max_value_32[31:0] %b", $signed(ra[(i*32) +: 32]) ,$signed(rb[(i*32) +: 32]),rt_delay[0][(i*32) +: 32],min_value_32[31:0],max_value_32[31:0]);
-								// $display("add word  ra = %b rb = %b rt_delay[0] =  %b", (ra[(i*32) +: 32]) ,(rb[(i*32) +: 32]),rt_delay[0][(i*32) +: 32]);
+								$display("add half word  ra = %b rb = %b rt_delay[0] =  %b ", $signed(ra[(i*8) +: 16]) ,$signed(rb[(i*8) +: 16]),$signed(rt_delay[0][(i*8) +: 16]));
 							end
 							$display("ra %h rb %h rt_delay %h ",ra,rb,rt_delay[0]);
 						end
+						11'b00011000000 : begin					//ah : Add Word
+							$display("add word ah");
+							for (i=0; i<4; i=i+1) begin
+								if((($signed(ra[(i*32) +: 32]) ^ $signed(rb[(i*32) +: 32])) & mask[0:31]) ==0) begin
+									if($signed(ra[(i*32) +: 32]) >=0) begin
+										$display("pos %b %b ",$signed(max_value_32),$signed(max_value_32)-$signed(ra[(i*32) +: 32]));
+										if(($signed(max_value_32)-$signed(ra[(i*32) +: 32])) >= $signed(rb[(i*32) +: 32])) begin
+											rt_delay[0][(i*32) +: 32] = $signed(ra[(i*32) +: 32]) + $signed(rb[(i*32) +: 32]) ;
+										end
+										else begin
+											rt_delay[0][(i*32) +: 32] = max_value_32;
+										end
+									end
+									else begin
+										$display("neg %b %b",$signed(min_value_32),($signed(min_value_32)-$signed(ra[(i*32) +: 32])));
+										if(($signed(min_value_32)-$signed(ra[(i*32) +: 32])) <= $signed(rb[(i*32) +: 32])) begin
+											$display("compute");
+											rt_delay[0][(i*32) +: 32] = $signed(ra[(i*32) +: 32]) + $signed(rb[(i*32) +: 32]) ;
+										end
+										else begin
+											rt_delay[0][(i*32) +: 32] = min_value_32;
+										end
+									end
+								end
+								else begin
+										$display("sign mismatch");
+										if(ra[i*32]==1) begin
+											$display("ra neg");
+											rt_delay[0][(i*32) +: 32]  =  rb[(i*32) +: 32] + ((~ra[(i*32) +: 32])+1);
+										end
+										else begin
+											$display("rb neg %b ",(~rb[(i*32) +: 32])+1);
+											rt_delay[0][(i*32) +: 32]  =  ra[(i*32) +: 32] + ((~rb[(i*32) +: 32])+1);
+										end
+								end
+								$display("add word  ra = %b rb = %b rt_delay[0] =  %b ", $signed(ra[(i*32) +: 32]) ,$signed(rb[(i*32) +: 32]),$signed(rt_delay[0][(i*32) +: 32]));
+							end
+							$display("ra %h rb %h rt_delay %h ",ra,rb,rt_delay[0]);
+							$display("ra %d rb %d rt_delay %d ",$signed(ra),$signed(rb),$signed(rt_delay[0]));
+						end
+						11'b00001001000 : begin		//sfh rt, ra, rb : Subtract from Halfword
+							$display("sfh rt, ra, rb");
+							$display("ra = %h rb = %h",ra,rb);
+							for (i=0; i<16; i=i+2) begin
+								if(rb[i*8]!=ra[i*8]) begin
+									if(rb[i*8] ==0 && ra[i*8]==1) begin
+										$display("rb pos ra neg ");
+										if(($signed(max_value_16)+$signed(ra[(i*8) +: 16]))>=rb[(i*8) +: 16]) begin
+											rt_delay[0][(i*8) +: 16] = $signed(rb[(i*8) +: 16]) + ((~ra[(i*8) +: 16])+1) ;
+										end
+										else begin
+											rt_delay[0][(i*8) +: 16] = max_value_16;
+										end
+									end
+									else begin
+										// rb is negative and ra is positive
+										$display("rb neg ra pos");
+										if(($signed(min_value_16)+$signed(ra[(i*8) +: 16])) <= $signed(rb[(i*8) +: 16])) begin
+											rt_delay[0][(i*8) +: 16] =((~rb[(i*8) +: 16])+1) + $signed(ra[(i*8) +: 16]) ;
+										end
+										else begin
+											rt_delay[0][(i*8) +: 16] = min_value_16;
+										end
+									end
+								end
+								else begin
+									if(rb[i*8] ==1 && ra[i*8]==1) begin
+										rt_delay[0][(i*8) +: 16] = $signed(rb[(i*8) +: 16]) - $signed(ra[(i*8) +: 16]);
+									end
+									else begin
+										rt_delay[0][(i*8) +: 16] = $signed(rb[(i*8) +: 16]) + ((~ra[(i*8) +: 16])+1) ;
+									end
+								end
+								$display("add half word  ra = %b rb = %b rt_delay[0] =  %b ", ((~ra[(i*8) +: 16])+1) ,$signed(rb[(i*8) +: 16]),$signed(rt_delay[0][(i*8) +: 16]));
+							end
+							$display("ra %h rb %h rt_delay %h ",ra,rb,rt_delay[0]);
+						end
+						11'b00001000000 : begin		//sf rt, ra, rb : Subtract from Word
+							$display("sf rt, ra, rb");
+							$display("ra = %h rb = %h",ra,rb);
+							for (i=0; i<16; i=i+4) begin
+								if(rb[i*8]!=ra[i*8]) begin
+									if(rb[i*8] ==0 && ra[i*8]==1) begin
+										$display("rb pos ra neg ");
+										if(($signed(max_value_32)+$signed(ra[(i*8) +: 32]))>=rb[(i*8) +: 32]) begin
+											rt_delay[0][(i*8) +: 32] = $signed(rb[(i*8) +: 32]) + ((~ra[(i*8) +: 32])+1) ;
+										end
+										else begin
+											rt_delay[0][(i*8) +: 32] = max_value_32;
+										end
+									end
+									else begin
+										// rb is negative and ra is positive
+										$display("rb neg ra pos");
+										if(($signed(min_value_32)+$signed(ra[(i*8) +: 32])) <= $signed(rb[(i*8) +: 32])) begin
+											rt_delay[0][(i*8) +: 32] =((~rb[(i*8) +: 32])+1) + $signed(ra[(i*8) +: 32]) ;
+										end
+										else begin
+											rt_delay[0][(i*8) +: 32] = min_value_32;
+										end
+									end
+								end
+								else begin
+									if(rb[i*8] ==1 && ra[i*8]==1) begin
+										rt_delay[0][(i*8) +: 32] = $signed(rb[(i*8) +: 32]) - $signed(ra[(i*8) +: 32]);
+									end
+									else begin
+										rt_delay[0][(i*8) +: 32] = $signed(rb[(i*8) +: 32]) + ((~ra[(i*8) +: 32])+1) ;
+									end
+								end
+								$display("add half word  ra = %b rb = %b rt_delay[0] =  %b ", ((~ra[(i*8) +: 32])+1) ,$signed(rb[(i*8) +: 32]),$signed(rt_delay[0][(i*8) +: 32]));
+							end
+							$display("ra %h rb %h rt_delay %h ",ra,rb,rt_delay[0]);
+						end
+
 						11'b00011000001 : begin // and
 							$display("and");
 							rt_delay[0] =  ra & rb;
@@ -300,6 +417,183 @@ module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_
 				//end
 				else if (format == 4) begin //RI10-type
 					case (op)
+						8'b00011101 : begin					//ahi rt, ra, imm10 : Add Halfword Immediate
+							$display("ahi rt, ra, imm10 ");
+							$display("ra = %h imm10 = %h",ra,imm[8:17]);
+							for(int i=0;i<6;i=i+1) begin
+								tmp[i] =  imm[8];
+							end
+							tmp[6:15] = imm[8:17];
+							$display("tmp %h ",tmp[0:15]);
+							for (i=0; i<16; i=i+2) begin
+								if((($signed(ra[(i*8) +: 16]) ^ $signed(tmp[0:15])) & mask[0:15]) ==0) begin
+									if($signed(ra[(i*8) +: 16]) >=0) begin
+										$display("pos %b %b ",$signed(max_value_16),$signed(max_value_16)-$signed(ra[(i*8) +: 16]));
+										if(($signed(max_value_16)-$signed(ra[(i*8) +: 16])) >= $signed(tmp[0:15])) begin
+											rt_delay[0][(i*8) +: 16] = $signed(ra[(i*8) +: 16]) + $signed(tmp[0:15]) ;
+										end
+										else begin
+											rt_delay[0][(i*8) +: 16] = max_value_16;
+										end
+									end
+									else begin
+										$display("neg %b %b",$signed(min_value_16),($signed(min_value_16)-$signed(ra[(i*8) +: 16])));
+										if(($signed(min_value_16)-$signed(ra[(i*8) +: 16])) <= $signed(tmp[0:15])) begin
+											$display("compute");
+											rt_delay[0][(i*8) +: 16] = $signed(ra[(i*8) +: 16]) + $signed(tmp[0:15]) ;
+										end
+										else begin
+											rt_delay[0][(i*8) +: 16] = min_value_16;
+										end
+									end
+								end
+								else begin
+										$display("sign mismatch");
+										if(ra[i*8]==1) begin
+											$display("ra neg %b ",((~ra[(i*8) +: 16])+1));
+											rt_delay[0][(i*8) +: 16]  =  tmp[0:15] + ((~ra[(i*8) +: 16])+1);
+										end
+										else begin
+											$display("rb neg %b ",(~tmp[0:15])+1);
+											rt_delay[0][(i*8) +: 16]  =  ra[(i*8) +: 16] + ((~tmp[0:15])+1);
+										end
+								end
+								$display("add half word  ra = %b rb = %b rt_delay[0] =  %b ", $signed(ra[(i*8) +: 16]) ,$signed(tmp[0:15]),$signed(rt_delay[0][(i*8) +: 16]));
+							end
+							$display("ra %h rb %h rt_delay %h ",ra,rb,rt_delay[0]);
+						end
+						8'b00011100 : begin					//ai rt, ra, imm10 : Add Word Immediate
+							$display("ai rt, ra, imm10");
+							$display("ra = %h imm10 = %h",ra,imm[8:17]);
+							for(int i=0;i<21;i=i+1) begin
+								tmp[i] =  imm[8];
+							end
+							tmp[21:31] = imm[8:17];
+							$display("tmp %h ",tmp[0:31]);
+							for (i=0; i<4; i=i+1) begin
+								if((($signed(ra[(i*32) +: 32]) ^ $signed(tmp[0:31])) & mask[0:31]) ==0) begin
+									if($signed(ra[(i*32) +: 32]) >=0) begin
+										$display("pos %b %b ",$signed(max_value_32),$signed(max_value_32)-$signed(ra[(i*32) +: 32]));
+										if(($signed(max_value_32)-$signed(ra[(i*32) +: 32])) >= $signed(tmp[0:31])) begin
+											rt_delay[0][(i*32) +: 32] = $signed(ra[(i*32) +: 32]) + $signed(tmp[0:31]) ;
+										end
+										else begin
+											rt_delay[0][(i*32) +: 32] = max_value_32;
+										end
+									end
+									else begin
+										$display("neg %b %b",$signed(min_value_32),($signed(min_value_32)-$signed(ra[(i*32) +: 32])));
+										if(($signed(min_value_32)-$signed(ra[(i*32) +: 32])) <= $signed(tmp[0:31])) begin
+											$display("compute");
+											rt_delay[0][(i*32) +: 32] = $signed(ra[(i*32) +: 32]) + $signed(tmp[0:31]) ;
+										end
+										else begin
+											rt_delay[0][(i*32) +: 32] = min_value_32;
+										end
+									end
+								end
+								else begin
+										$display("sign mismatch");
+										if(ra[i*32]==1) begin
+											$display("ra neg %b ",((~ra[(i*32) +: 32])+1));
+											rt_delay[0][(i*32) +: 32]  =  tmp[0:31] + ((~ra[(i*32) +: 32])+1);
+										end
+										else begin
+											$display("rb neg %b ",(~tmp[0:31])+1);
+											rt_delay[0][(i*32) +: 32]  =  ra[(i*32) +: 32] + ((~tmp[0:31])+1);
+										end
+								end
+								$display("add word  ra = %b rb = %b rt_delay[0] =  %b ", $signed(ra[(i*32) +: 32]) ,$signed(tmp[0:31]),$signed(rt_delay[0][(i*32) +: 32]));
+							end
+							$display("ra %h rb %h rt_delay %h ",ra,rb,rt_delay[0]);
+							$display("ra %d rb %d rt_delay %d ",$signed(ra),$signed(rb),$signed(rt_delay[0]));
+						end
+						8'b00001101 : begin		//sfhi rt, ra, imm10 : Subtract from Halfword Immediate
+							$display("sfhi rt, ra, imm10");
+							$display("ra = %h imm10 = %h",ra,imm[8:17]);
+							for(int i=0;i<6;i=i+1) begin
+								tmp[i] =  imm[8];
+							end
+							tmp[6:15] = imm[8:17];
+							$display("tmp %h ",tmp[0:15]);
+
+							for (i=0; i<16; i=i+2) begin
+								if(rb[i*8]!=ra[i*8]) begin
+									if(rb[i*8] ==0 && ra[i*8]==1) begin
+										$display("rb pos ra neg ");
+										if(($signed(max_value_16)+$signed(ra[(i*8) +: 16]))>=tmp[0:15]) begin
+											rt_delay[0][(i*8) +: 16] = $signed(tmp[0:15]) + ((~ra[(i*8) +: 16])+1) ;
+										end
+										else begin
+											rt_delay[0][(i*8) +: 16] = max_value_16;
+										end
+									end
+									else begin
+										// rb is negative and ra is positive
+										$display("rb neg ra pos");
+										if(($signed(min_value_16)+$signed(ra[(i*8) +: 16])) <= $signed(tmp[0:15])) begin
+											rt_delay[0][(i*8) +: 16] =((~tmp[0:15])+1) + $signed(ra[(i*8) +: 16]) ;
+										end
+										else begin
+											rt_delay[0][(i*8) +: 16] = min_value_16;
+										end
+									end
+								end
+								else begin
+									if(rb[i*8] ==1 && ra[i*8]==1) begin
+										rt_delay[0][(i*8) +: 16] = $signed(tmp[0:15]) - $signed(ra[(i*8) +: 16]);
+									end
+									else begin
+										rt_delay[0][(i*8) +: 16] = $signed(tmp[0:15]) + ((~ra[(i*8) +: 16])+1) ;
+									end
+								end
+								$display("add half word  ra = %b rb = %b rt_delay[0] =  %b ", ((~ra[(i*8) +: 16])+1) ,$signed(tmp[0:15]),$signed(rt_delay[0][(i*8) +: 16]));
+							end
+							$display("ra %h rb %h rt_delay %h ",ra,rb,rt_delay[0]);
+						end
+						8'b00001100 : begin		//sfi rt, ra, imm10 : Subtract from Word Immediate
+							$display("sfi rt, ra, imm10");
+							$display("ra = %h imm10 = %h",ra,imm[8:17]);
+							for(int i=0;i<21;i=i+1) begin
+								tmp[i] =  imm[8];
+							end
+							tmp[21:31] = imm[8:17];
+							$display("tmp %h ",tmp[0:31]);
+
+							for (i=0; i<16; i=i+4) begin
+								if(rb[i*8]!=ra[i*8]) begin
+									if(rb[i*8] ==0 && ra[i*8]==1) begin
+										$display("rb pos ra neg ");
+										if(($signed(max_value_32)+$signed(ra[(i*8) +: 32]))>=tmp[0:31]) begin
+											rt_delay[0][(i*8) +: 32] = $signed(tmp[0:31]) + ((~ra[(i*8) +: 32])+1) ;
+										end
+										else begin
+											rt_delay[0][(i*8) +: 32] = max_value_32;
+										end
+									end
+									else begin
+										// rb is negative and ra is positive
+										$display("rb neg ra pos");
+										if(($signed(min_value_32)+$signed(ra[(i*8) +: 32])) <= $signed(tmp[0:31])) begin
+											rt_delay[0][(i*8) +: 32] =((~tmp[0:31])+1) + $signed(ra[(i*8) +: 32]) ;
+										end
+										else begin
+											rt_delay[0][(i*8) +: 32] = min_value_32;
+										end
+									end
+								end
+								else begin
+									if(rb[i*8] ==1 && ra[i*8]==1) begin
+										rt_delay[0][(i*8) +: 32] = $signed(tmp[0:31]) - $signed(ra[(i*8) +: 32]);
+									end
+									else begin
+										rt_delay[0][(i*8) +: 32] = $signed(tmp[0:31]) + ((~ra[(i*8) +: 32])+1) ;
+									end
+								end
+								$display("add half word  ra = %b rb = %b rt_delay[0] =  %b ", ((~ra[(i*8) +: 32])+1) ,$signed(tmp[0:31]),$signed(rt_delay[0][(i*8) +: 32]));
+							end
+							$display("ra %h rb %h rt_delay %h ",ra,rb,rt_delay[0]);
+						end
 						8'b00010110 : begin // andbi rt, ra, imm10 And Byte Immediate
 							$display("andbi");
 							for(int i=0;i<15;i=i+2) begin
@@ -628,14 +922,17 @@ module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_
 							$display("rt_delay[0] %b %h %d ",rt_delay[0],rt_delay[0],rt_delay[0]);
 							$display("imm %b %h %d ", {imm[2:17],16'h0000},{imm[2:17],16'h0000},{imm[2:17],16'h0000});
 						end
-						// 9'b011000001: begin // iohl rt, imm16 Immediate Or Halfword Lower
-						// $display("iohl rt, imm16");
-						// 	for(int i=0;i<16;i=i+4) begin
-						// 		rt_delay[0][(i*8) +: 32] = rt_delay[0][(i*8) +: 32] | {16'h0000,imm[2:17]};
-						// 	end
-						// 	$display("rt_delay[0] %b %h %d ",rt_delay[0],rt_delay[0],rt_delay[0]);
-						// 	$display("imm %b %h %d ", {imm[2:17],16'h0000},{imm[2:17],16'h0000},{imm[2:17],16'h0000});
-						// end
+						9'b011000001: begin // iohl rt, imm16 Immediate Or Halfword Lower
+						$display("iohl rt, imm16");
+							for(int i=0;i<16;i=i+4) begin
+								rt_delay[0][(i*8) +: 32] = rt_st[(i*8) +: 32] | {16'h0000,imm[2:17]};
+								$display("rt_delay %h rt_st %h t %h",rt_delay[0][(i*8) +: 32],rt_st[(i*8) +: 32],{16'h0000,imm[2:17]});
+							end
+							$display("rt_delay[0] %b %h %d ",rt_delay[0],rt_delay[0],rt_delay[0]);
+							$display("rt_st [existing rt_value ] %b %h %d ",rt_st,rt_st,rt_st);
+							$display("imm %b %h %d ", {16'h0000,imm[2:17]},{16'h0000,imm[2:17]},{16'h0000,imm[2:17]});
+						end
+
 						default begin
 							rt_delay[0] = 0;
 							rt_addr_delay[0] = 0;
@@ -645,8 +942,27 @@ module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_
 					endcase
 
 				end
-				//else if (format == 6) begin
-				//end
+				else if (format == 6) begin
+					case (op)
+						7'b0100001: begin // ila rt, imm18 Immediate Load Address
+							$display("ila rt, imm18 ");
+							for(int i=0;i<16;i=i+4) begin
+								rt_delay[0][(i*8) +: 32] = rt_st[(i*8) +: 32] | {14'h0000,imm[0:17]};
+								$display("rt_delay %h rt_st %h t %h",rt_delay[0][(i*8) +: 32],rt_st[(i*8) +: 32], {14'h0000,imm[0:17]});
+							end
+							$display("rt_delay[0] %b %h %d ",rt_delay[0],rt_delay[0],rt_delay[0]);
+							$display("rt_st [existing rt_value ] %b %h %d ",rt_st,rt_st,rt_st);
+							$display("imm %b %h %d ", {14'h0000,imm[0:17]}, {14'h0000,imm[0:17]}, {14'h0000,imm[0:17]});
+						end
+
+						default begin
+							rt_delay[0] = 0;
+							rt_addr_delay[0] = 0;
+							reg_write_delay[0] = 0;
+							tmp=0;
+						end
+					endcase
+				end
 			end
 		end
 	end

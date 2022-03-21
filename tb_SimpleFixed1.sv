@@ -5,7 +5,7 @@ module tb_SimpleFixed1();
 	logic [0:10]	op;				//Decoded opcode, truncated based on format
 	logic [2:0]		format;			//Format of instr, used with op and imm
 	logic [0:6]		rt_addr;		//Destination register address
-	logic [0:127]	ra, rb;			//Values of source registers
+	logic [0:127]	ra, rb,rt_st;			//Values of source registers
 	logic [0:17]	imm;			//Immediate value, truncated based on format
 	logic			reg_write;		//Will current instr write to RegTable
 
@@ -14,7 +14,7 @@ module tb_SimpleFixed1();
 	logic [0:6]		rt_addr_wb;		//Destination register for rt_wb
 	logic			reg_write_wb;	//Will rt_wb write to RegTable
 
-	SimpleFixed1 dut(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb,
+	SimpleFixed1 dut(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_write, rt_wb,
 		rt_addr_wb, reg_write_wb);
 
 	// Initialize the clock to zero.
@@ -47,32 +47,111 @@ module tb_SimpleFixed1();
 		op = 0;										//@16ns, instr = nop
 
 		@(posedge clk);
+		// Add Halfword
 		#1; op = 11'b00011001000;
 		ra = 128'hFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE;
 		@(posedge clk);
 		//#1; op = 0;
-		@(posedge clk);
-		#1; op = 11'b00001011111;
-		@(posedge clk);
+		// @(posedge clk);
+		// #1; op = 11'b00001011111;
+		// @(posedge clk);
 		//#1; op = 0;
 		@(posedge clk);
 		#1; op = 11'b00011001000;
-		ra = 128'hFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE;
+		// Add Halfword
+		ra = 128'h80005678800000007FFFFFFF7FFF7FFF;
+		rb = 128'h80001234800000000000000180008000;
 		@(posedge clk);
-		#1; ra = 128'h00101131337377F7FF000000000000FF;
+		#1; op = 11'b00011001000;
+		// Add Halfword
+		ra = 128'h80005678800000007FFFFFFF7FFF7FFF;
+		rb = 128'h80001234800000000000000180008000;
 		@(posedge clk);
+		#1;
+		ra = 128'h00101131337377F7FF00000000000FF;
+
+		@(posedge clk);
+		//sfh rt, ra, rb : Subtract from Halfword
+		#1; op = 11'b00001001000;
+			ra = 128'h7FFF9FFF7FFF7FFF7FFF7FFF7FFF7FFF;
+			rb = 128'h80001234800000000000000180008000;
+
+
+		@(posedge clk);
+		//sfh rt, ra, rb : Subtract from Halfword
+		#1; op = 11'b00001001000;
+			ra = 128'hF7777FFF7FFF7FFF7FFF7FFF7FFF7FFF;
+			rb = 128'h01001234800000000000000180008000;
+
+		@(posedge clk);
+		//sf rt, ra, rb : Subtract from Word
+		#1; op = 11'b00001000000;
+			ra = 128'h7FFF9FFF7FFF7FFF7FFF7FFF7FFF7FFF;
+			rb = 128'h80001234800000000000000180008000;
+
+
+		@(posedge clk);
+		//sf rt, ra, rb : Subtract from Word
+		#1; op = 11'b00001000000;
+			ra = 128'hF7777FFF7FFF7FFF7FFF7FFF7FFF7FFF;
+			rb = 128'h01001234800000000000000180008000;
+
+		@(posedge clk);
+		//sfhi rt, ra, imm10 : Subtract from Halfword Immediate
+		#1; op = 8'b00001101;
+			format = 4;
+			ra = 128'h7FFF9FFF7FFF7FFF7FFF7FFF7FFF7FFF;
+			imm = 10'b0011111111;
+
+
+		@(posedge clk);
+		//sfhi rt, ra, imm10 : Subtract from Halfword Immediate
+		#1; op =8'b00001101;
+			format = 4;
+			ra = 128'hF7777FFF7FFF7FFF7FFF7FFF7FFF7FFF;
+			imm = 10'b1011111111;
+
+		@(posedge clk);
+		//sfi rt, ra, imm10 : Subtract from Word Immediate
+		#1; op = 8'b00001101;
+			format = 4;
+			ra = 128'h7FFF9FFF7FFF7FFF7FFF7FFF7FFF7FFF;
+			imm = 10'b0011111111;
+
+
+		@(posedge clk);
+		//sfi rt, ra, imm10 : Subtract from Word Immediate
+		#1; op = 11'b00001000000;
+			ra = 128'hF7777FFF7FFF7FFF7FFF7FFF7FFF7FFF;
+			imm = 10'b1011111111;
+			format = 4;
+
+
+		@(posedge clk);
+		//Add Word
 		#1; op = 11'b00011000000;
-			ra = 128'h7FFF7FFF7FFF7FFF7FFF7FFF7FFF7FFF;
+		format = 0;
+		ra = 128'h80000000800000007FFFFFFF7FFFFFFF;	rb = 128'h80000000800000000000000180000000;
 		@(posedge clk);
-		#1; op = 11'b00011000000;
-		ra = 128'h80000000800000008000000080000000;	rb = 128'h10001000100010001000100010001000;
-		@(posedge clk);
+		//Add Word
 		#1; op = 11'b00011000000;
 		ra = 128'h90000000900000009000000090000000;	rb = 128'h10001000100010001000100010001000;
 
 
+		@(posedge clk);
+		//ahi rt, ra, imm10 : Add Halfword Immediate
+		#1; op = 8'b00011101;
+		format = 4;
+		ra = 128'h80000000800000007FFFFFFF7FFFFFFF;	imm = 10'b0011111111;
+		@(posedge clk);
+		//ai rt, ra, imm10 : Add Word Immediate
+		#1; op = 8'b00011100;
+		format = 4;
+		ra = 128'h90000000900000009000000090000000;	imm = 10'b1011111111;
+
 
 		@(posedge clk);
+		format = 3'b000;
 		#1; op=11'b00011000001;
 		ra = 128'h7FFF7FFF7FFF7FFF7FFF7FFF7FFF7FFF;
 		rb = 128'h10001000100010001000100010001000;
@@ -286,12 +365,22 @@ module tb_SimpleFixed1();
 			imm = 16'b0110011001100110;
 
 		@(posedge clk);
-		// ilh rt, imm16 Immediate Load Halfword
+		// iohl rt, imm16 Immediate Or Halfword Lower
 
- 		#1; op = 9'b010000010;
+ 		#1; op = 9'b011000001;
 			format = 5;
 			ra = 128'hFFFFFFFF7FFF7FFF7FFF7FFFFFFF1FFF;
 			imm = 16'b0110011001100110;
+			rt_st=128'h0FF0FFFF700F7FFF7FFF7FFFFFFF1000;
+
+		@(posedge clk);
+		// ila rt, imm18 Immediate Load Address
+		$display("ila rt, imm18 ");
+ 		#1; op = 7'b0100001;
+			format = 6;
+			ra = 128'hFFFFFFFF7FFF7FFF7FFF7FFFFFFF1FFF;
+			imm = 18'b000110011001100110;
+			rt_st=128'h0FF0FFFF700F7FFF7FFF7FFFFFFF1000;
 
 		@(posedge clk);
 		#1; op=0;
