@@ -19,10 +19,7 @@ module Byte(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, rt_a
 	logic [3:0][0:6]	rt_addr_delay;		//Destination register for rt_wb
 	logic [3:0]			reg_write_delay;	//Will rt_wb write to RegTable
 	
-	logic [6:0]			i, j;				//7-bit counter for loops
 	logic [3:0]			temp;				//Incrementing counter
-	
-	// TODO : Implement all instr
 	
 	always_comb begin
 		rt_wb = rt_delay[3];
@@ -36,7 +33,7 @@ module Byte(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, rt_a
 			rt_delay[3] <= 0;
 			rt_addr_delay[3] <= 0;
 			reg_write_delay[3] <= 0;
-			for (i=0; i<3; i=i+1) begin
+			for (int i=0; i<3; i=i+1) begin
 				rt_delay[i] <= 0;
 				rt_addr_delay[i] <= 0;
 				reg_write_delay[i] <= 0;
@@ -64,13 +61,32 @@ module Byte(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, rt_a
 				if (format == 0) begin
 					case (op)
 						11'b01010110100 : begin					//cntb : Count Ones in Bytes
-							for (i=0; i<16; i=i+1) begin
+							for (int i=0; i<16; i=i+1) begin
 								temp = 0;
-								for (j=0; j<8; j=j+1) begin
+								for (int j=0; j<8; j=j+1) begin
 									if (ra[(i*8)+j] == 1'b1)
 										temp = temp + 1;
 								end
 								rt_delay[0][(i*8) +: 8] <= temp;
+							end
+						end
+						11'b00011010011 : begin					//avgb : Average Bytes
+							for (int i=0; i<16; i=i+1) begin
+								rt_delay[0][(i*8) +: 8] <= ({2'b00, ra[(i*8) +: 8]} + {2'b00, rb[(i*8) +: 8]} + 1) >> 1;
+							end
+						end
+						11'b00001010011 : begin					//absdb : Absolute Difference of Bytes
+							for (int i=0; i<16; i=i+1) begin
+								if ($signed(ra[(i*8) +: 8]) > $signed(rb[(i*8) +: 8]))
+									rt_delay[0][(i*8) +: 8] <= $signed(ra[(i*8) +: 8]) - $signed(rb[(i*8) +: 8]);
+								else
+									rt_delay[0][(i*8) +: 8] <= $signed(rb[(i*8) +: 8]) - $signed(ra[(i*8) +: 8]);
+							end
+						end
+						11'b01001010011 : begin					//sumb : Sum Bytes into Halfwords
+							for (int i=0; i<4; i=i+1) begin
+								rt_delay[0][(i*32) +: 16] <= $signed(rb[(i*32) +: 8]) + $signed(rb[(i*32)+8 +: 8]) + $signed(rb[(i*32)+16 +: 8]) + $signed(rb[(i*32)+24 +: 8]);
+								rt_delay[0][(i*32)+16 +: 16] <= $signed(ra[(i*32) +: 8]) + $signed(ra[(i*32)+8 +: 8]) + $signed(ra[(i*32)+16 +: 8]) + $signed(ra[(i*32)+24 +: 8]);
 							end
 						end
 						default begin
@@ -80,18 +96,11 @@ module Byte(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, rt_a
 						end
 					endcase
 				end
-				//else if (format == 1) begin
-				//end
-				//else if (format == 2) begin
-				//end
-				//else if (format == 3) begin
-				//end
-				//else if (format == 4) begin
-				//end
-				//else if (format == 5) begin
-				//end
-				//else if (format == 6) begin
-				//end
+				else begin
+					rt_delay[0] <= 0;
+					rt_addr_delay[0] <= 0;
+					reg_write_delay[0] <= 0;
+				end
 			end
 		end
 	end

@@ -1,11 +1,11 @@
-module Branch(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, pc_in, rt_wb, rt_addr_wb, reg_write_wb, pc_wb, branch_taken);
+module Branch(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_write, pc_in, rt_wb, rt_addr_wb, reg_write_wb, pc_wb, branch_taken);
 	input			clk, reset;
 	
 	//RF/FWD Stage
 	input [0:10]	op;				//Decoded opcode, truncated based on format
 	input [2:0]		format;			//Format of instr, used with op and imm
 	input [0:6]		rt_addr;		//Destination register address
-	input [0:127]	ra, rb;			//Values of source registers
+	input [0:127]	ra, rb, rt_st;			//Values of source registers
 	input [0:17]	imm;			//Immediate value, truncated based on format
 	input			reg_write;		//Will current instr write to RegTable
 	input [7:0]		pc_in;			//Program counter from IF stage
@@ -23,10 +23,6 @@ module Branch(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, pc_in, rt
 	logic			reg_write_delay;	//Will rt_wb write to RegTable
 	logic [7:0]		pc_delay;			//Staging register for PC
 	logic			branch_delay;		//Was branch taken?
-	
-	logic [6:0]		i;					//7-bit counter for loops
-	
-	// TODO : Implement all instr and functionality???
 	
 	always_comb begin
 		rt_wb = rt_delay;
@@ -57,8 +53,8 @@ module Branch(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, pc_in, rt
 				reg_write_delay <= reg_write;
 				if (format == 0) begin
 					case (op)
-						11'b00110101000 : begin					//bi : Branch Indirect
-							pc_delay <= ra[0:31];// & 32'hFFFFFFFC;
+						11'b00110101000 : begin				//bi : Branch Indirect
+							pc_delay <= ra[0:31];
 							reg_write_delay <= 0;
 							branch_delay <= 1;
 						end
@@ -71,22 +67,30 @@ module Branch(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, pc_in, rt
 						end
 					endcase
 				end
-				//else if (format == 1) begin
-				//end
-				//else if (format == 2) begin
-				//end
-				//else if (format == 3) begin
-				//end
-				//else if (format == 4) begin
-				//end
 				else if (format == 5) begin
 					case (op[2:10])
-						9'b001100110 : begin					//brsl: Branch Relative and Set Link
+						9'b001100110 : begin				//brsl: Branch Relative and Set Link
 							rt_delay[0:31] <= pc_in + 1;
 							rt_delay[32:127] <= 0;
 							pc_delay <= imm[2:17] + pc_in;
 							branch_delay <= 1;
 						end
+						9'b001100100 : begin				//br: Branch Relative
+							pc_delay <= imm[2:17] + pc_in;
+							branch_delay <= 1;
+						end
+						9'b001100000 : begin				//bra: Branch Absolute
+							pc_delay <= imm[2:17];
+							branch_delay <= 1;
+						end
+						9'b001000010 : begin				//brnz: Branch If Not Zero Word
+							pc_delay <= imm[2:17];
+							branch_delay <= (rt_st[0:31] == 32'h0000) ? 0 : 1;
+						end
+						9'b001000000 : begin				//brz: Branch If Zero Word
+							pc_delay <= imm[2:17];
+							branch_delay <= (rt_st[0:31] == 32'h0000) ? 1 : 0;
+						end
 						default begin
 							rt_delay <= 0;
 							rt_addr_delay <= 0;
@@ -96,8 +100,13 @@ module Branch(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, pc_in, rt
 						end
 					endcase
 				end
-				//else if (format == 6) begin
-				//end
+				else begin
+					rt_delay <= 0;
+					rt_addr_delay <= 0;
+					reg_write_delay <= 0;
+					pc_delay <= 0;
+					branch_delay <= 0;
+				end
 			end
 		end
 	end
