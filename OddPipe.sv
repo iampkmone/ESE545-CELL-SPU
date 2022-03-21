@@ -1,4 +1,4 @@
-module OddPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rt_st, imm, reg_write, pc_in, rt_wb, rt_addr_wb, reg_write_wb, pc_wb, branch_taken);
+module OddPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rt_st, imm, reg_write, pc_in, rt_wb, rt_addr_wb, reg_write_wb, pc_wb, branch_taken, fw_wb, fw_addr_wb, fw_write_wb);
 	input			clk, reset;
 	
 	//RF/FWD Stage
@@ -19,9 +19,9 @@ module OddPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rt_st, imm, reg_wr
 	output logic			branch_taken;	//Was branch taken?
 	
 	//Internal Signals
-	logic [6:0][0:127]	fw_wb;			//Staging register for forwarded values
-	logic [6:0][0:6]	fw_addr_wb;		//Destination register for rt_wb
-	logic [6:0]			fw_write_wb;	//Will rt_wb write to RegTable
+	output logic [6:0][0:127]	fw_wb;			//Staging register for forwarded values
+	output logic [6:0][0:6]		fw_addr_wb;		//Destination register for rt_wb
+	output logic [6:0]			fw_write_wb;	//Will rt_wb write to RegTable
 	
 	logic [0:10]		p1_op;			//Multiplexed opcode
 	logic [2:0]			p1_format;		//Multiplexed format

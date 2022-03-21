@@ -22,12 +22,15 @@ module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_
 	logic [6:0]		i;				//7-bit counter for loops
 	
 	// TODO : Implement all instr
+	
+	always_comb begin
+		rt_wb = rt_delay[1];
+		rt_addr_wb = rt_addr_delay[1];
+		reg_write_wb = reg_write_delay[1];
+	end
 
 	always_ff @(posedge clk) begin
 		if (reset == 1) begin
-			rt_wb = 0;
-			rt_addr_wb = 0;
-			reg_write_wb = 0;
 			rt_delay[1] <= 0;
 			rt_addr_delay[1] <= 0;
 			reg_write_delay[1] <= 0;
@@ -36,36 +39,29 @@ module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_
 			reg_write_delay[0] <= 0;
 		end
 		else begin
-			rt_wb <= rt_delay[1];
-			rt_addr_wb <= rt_addr_delay[1];
-			reg_write_wb <= reg_write_delay[1];
 			rt_delay[1] <= rt_delay[0];
 			rt_addr_delay[1] <= rt_addr_delay[0];
 			reg_write_delay[1] <= reg_write_delay[0];
 			
-			rt_wb = rt_delay[1];
-			rt_addr_wb = rt_addr_delay[1];
-			reg_write_wb = reg_write_delay[1];
-			
 			if (format == 0 && op == 0) begin					//nop : No Operation (Execute)
-				rt_delay[0] = 0;
-				rt_addr_delay[0] = 0;
-				reg_write_delay[0] = 0;
+				rt_delay[0] <= 0;
+				rt_addr_delay[0] <= 0;
+				reg_write_delay[0] <= 0;
 			end
 			else begin
-				rt_addr_delay[0] = rt_addr;
-				reg_write_delay[0] = reg_write;
+				rt_addr_delay[0] <= rt_addr;
+				reg_write_delay[0] <= reg_write;
 				if (format == 0) begin
 					case (op)
 						11'b00011001000 : begin					//ah : Add Halfword
 							for (i=0; i<8; i=i+1) begin
-								rt_delay[0][(i*16) +: 16] = $signed(ra[(i*16) +: 16]) + $signed(rb[(i*16) +: 16]);
+								rt_delay[0][(i*16) +: 16] <= $signed(ra[(i*16) +: 16]) + $signed(rb[(i*16) +: 16]);
 							end
 						end
 						default begin
-							rt_delay[0] = 0;
-							rt_addr_delay[0] = 0;
-							reg_write_delay[0] = 0;
+							rt_delay[0] <= 0;
+							rt_addr_delay[0] <= 0;
+							reg_write_delay[0] <= 0;
 						end
 					endcase
 				end

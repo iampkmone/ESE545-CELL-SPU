@@ -28,14 +28,16 @@ module Branch(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, pc_in, rt
 	
 	// TODO : Implement all instr and functionality???
 	
+	always_comb begin
+		rt_wb = rt_delay;
+		rt_addr_wb = rt_addr_delay;
+		reg_write_wb = reg_write_delay;
+		pc_wb = pc_delay;
+		branch_taken = branch_delay;
+	end
+	
 	always_ff @(posedge clk) begin
 		if (reset == 1) begin
-			rt_wb = 0;
-			rt_addr_wb = 0;
-			reg_write_wb = 0;
-			pc_wb = 0;
-			branch_taken = 0;
-			
 			rt_delay <= 0;
 			rt_addr_delay <= 0;
 			reg_write_delay <= 0;
@@ -43,35 +45,29 @@ module Branch(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, pc_in, rt
 			branch_delay <= 0;
 		end
 		else begin
-			rt_wb = rt_delay;
-			rt_addr_wb = rt_addr_delay;
-			reg_write_wb = reg_write_delay;
-			pc_wb = pc_delay;
-			branch_taken = branch_delay;
-			
 			if (format == 0 && op == 0) begin					//nop : No Operation (Load)
-				rt_delay = 0;
-				rt_addr_delay = 0;
-				reg_write_delay = 0;
-				pc_delay = 0;
-				branch_delay = 0;
+				rt_delay <= 0;
+				rt_addr_delay <= 0;
+				reg_write_delay <= 0;
+				pc_delay <= 0;
+				branch_delay <= 0;
 			end
 			else begin
-				rt_addr_delay = rt_addr;
-				reg_write_delay = reg_write;
+				rt_addr_delay <= rt_addr;
+				reg_write_delay <= reg_write;
 				if (format == 0) begin
 					case (op)
 						11'b00110101000 : begin					//bi : Branch Indirect
-							pc_delay = ra[0:31];// & 32'hFFFFFFFC;
-							reg_write_delay = 0;
-							branch_delay = 1;
+							pc_delay <= ra[0:31];// & 32'hFFFFFFFC;
+							reg_write_delay <= 0;
+							branch_delay <= 1;
 						end
 						default begin
-							rt_delay = 0;
-							rt_addr_delay = 0;
-							reg_write_delay = 0;
-							pc_delay = 0;
-							branch_delay = 0;
+							rt_delay <= 0;
+							rt_addr_delay <= 0;
+							reg_write_delay <= 0;
+							pc_delay <= 0;
+							branch_delay <= 0;
 						end
 					endcase
 				end
@@ -86,17 +82,17 @@ module Branch(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, pc_in, rt
 				else if (format == 5) begin
 					case (op[2:10])
 						9'b001100110 : begin					//brsl: Branch Relative and Set Link
-							rt_delay[0:31] = pc_in + 1;
-							rt_delay[32:127] = 0;
-							pc_delay = imm[2:17] + pc_in;
-							branch_delay = 1;
+							rt_delay[0:31] <= pc_in + 1;
+							rt_delay[32:127] <= 0;
+							pc_delay <= imm[2:17] + pc_in;
+							branch_delay <= 1;
 						end
 						default begin
-							rt_delay = 0;
-							rt_addr_delay = 0;
-							reg_write_delay = 0;
-							pc_delay = 0;
-							branch_delay = 0;
+							rt_delay <= 0;
+							rt_addr_delay <= 0;
+							reg_write_delay <= 0;
+							pc_delay <= 0;
+							branch_delay <= 0;
 						end
 					endcase
 				end
