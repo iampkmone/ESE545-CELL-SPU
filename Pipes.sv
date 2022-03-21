@@ -17,6 +17,12 @@ module Pipes(clk, reset, instr_even, instr_odd, pc, pc_wb, branch_taken);
 	logic [0:6]		rt_addr_even_wb, rt_addr_odd_wb;		//Destination register addresses
 	logic			reg_write_even_wb, reg_write_odd_wb;	//1 if instr will write to rt, else 0
 	
+	//Signals for forwarding logic
+	logic [6:0][0:127]	fw_even_wb, fw_odd_wb;				//Pipe shift registers of values ready to be forwarded
+	logic [6:0][0:6]	fw_addr_even_wb, fw_addr_odd_wb;	//Destinations of values to be forwarded
+	logic [6:0]			fw_write_even_wb, fw_write_odd_wb;	//Will forwarded values be writted to reg?
+	logic [0:127]	ra_even_fwd, rb_even_fwd, rc_even_fwd, ra_odd_fwd, rb_odd_fwd, rt_st_odd_fwd;	//Updated input values
+
 	//Signals for handling branches
 	output logic [7:0]	pc_wb;									//New program counter for branch
 	output logic		branch_taken;							//Was branch taken?
@@ -25,12 +31,18 @@ module Pipes(clk, reset, instr_even, instr_odd, pc, pc_wb, branch_taken);
 		.ra_even(ra_even), .rb_even(rb_even), .rc_even(rc_even), .ra_odd(ra_odd), .rb_odd(rb_odd), .rt_st_odd(rt_st_odd), .rt_addr_even(rt_addr_even_wb),
 		.rt_addr_odd(rt_addr_odd_wb), .rt_even(rt_even_wb), .rt_odd(rt_odd_wb), .reg_write_even(reg_write_even_wb), .reg_write_odd(reg_write_odd_wb));
 	
-	EvenPipe ev(.clk(clk), .reset(reset), .op(op_even), .format(format_even), .unit(unit_even), .rt_addr(rt_addr_even), .ra(ra_even), .rb(rb_even), .rc(rc_even),
-		.imm(imm_even), .reg_write(reg_write_even), .rt_wb(rt_even_wb), .rt_addr_wb(rt_addr_even_wb), .reg_write_wb(reg_write_even_wb));
+	EvenPipe ev(.clk(clk), .reset(reset), .op(op_even), .format(format_even), .unit(unit_even), .rt_addr(rt_addr_even), .ra(ra_even_fwd), .rb(rb_even_fwd), .rc(rc_even_fwd),
+		.imm(imm_even), .reg_write(reg_write_even), .rt_wb(rt_even_wb), .rt_addr_wb(rt_addr_even_wb), .reg_write_wb(reg_write_even_wb),
+		.fw_wb(fw_even_wb), .fw_addr_wb(fw_addr_even_wb), .fw_write_wb(fw_write_even_wb));
 	
-	OddPipe od(.clk(clk), .reset(reset), .op(op_odd), .format(format_odd), .unit(unit_odd), .rt_addr(rt_addr_odd), .ra(ra_odd), .rb(rb_odd),
-		.rt_st(rt_st_odd), .imm(imm_odd), .reg_write(reg_write_odd), .pc_in(pc), .rt_wb(rt_odd_wb), .rt_addr_wb(rt_addr_odd_wb), .reg_write_wb(reg_write_odd_wb),
-		.pc_wb(pc_wb), .branch_taken(branch_taken));
+	OddPipe od(.clk(clk), .reset(reset), .op(op_odd), .format(format_odd), .unit(unit_odd), .rt_addr(rt_addr_odd), .ra(ra_odd_fwd), .rb(rb_odd_fwd),
+		.rt_st(rt_st_odd_fwd), .imm(imm_odd), .reg_write(reg_write_odd), .pc_in(pc), .rt_wb(rt_odd_wb), .rt_addr_wb(rt_addr_odd_wb), .reg_write_wb(reg_write_odd_wb),
+		.pc_wb(pc_wb), .branch_taken(branch_taken), .fw_wb(fw_odd_wb), .fw_addr_wb(fw_addr_odd_wb), .fw_write_wb(fw_write_odd_wb));
+		
+	Forward fwd(.clk(clk), .reset(reset), .instr_even(instr_even), .instr_odd(instr_odd), .ra_even(ra_even), .rb_even(rb_even), .rc_even(rc_even),
+		.ra_odd(ra_odd), .rb_odd(rb_odd), .rt_st_odd(rt_st_odd), .ra_even_fwd(ra_even_fwd), .rb_even_fwd(rb_even_fwd), .rc_even_fwd(rc_even_fwd),
+		.ra_odd_fwd(ra_odd_fwd), .rb_odd_fwd(rb_odd_fwd), .rt_st_odd_fwd(rt_st_odd_fwd), .fw_even_wb(fw_even_wb), .fw_addr_even_wb(fw_addr_even_wb),
+		.fw_write_even_wb(fw_write_even_wb), .fw_odd_wb(fw_odd_wb), .fw_addr_odd_wb(fw_addr_odd_wb), .fw_write_odd_wb(fw_write_odd_wb));
 		
 	//Decode logic (Note: Will be placed in decode/hazard unit in final submission)
 	always_comb begin

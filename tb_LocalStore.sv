@@ -35,35 +35,33 @@ module tb_LocalStore();
 	initial begin
 		reset = 1;
 		format = 3'b000;
-		op = 11'b00101000100;						//lqx
+		op = 11'b00101000100;						//stqx
 		rt_addr = 7'b0000011;						//RT = $r3
-		ra = 128'h00000010000100010001000100010001;	//Halfwords: 16'h0010
+		ra = 128'h00000010000100010001000100010001;	//Halfwords: 16'h0001
 		rb = 128'h000000F0000100010001000100010001;	//Halfwords: 16'h0001
 		rt_st_odd = 128'h00000001000100010001000100010001;
-		imm = 0;
+		imm = 12;
 		reg_write = 1;
 		
 		#6;
 		reset = 0;									//@11ns, enable unit
 		
 		@(posedge clk); #1;
-		op = 0;										//@16ns, instr = nop
-	
-		@(posedge clk);
-		//#1; op = 11'b00111011011;
-		@(posedge clk);
-		//#1; op = 0;
-		@(posedge clk);
-		//#1; op = 11'b00111011011;
-		@(posedge clk);
-		//#1; op = 0;
-		@(posedge clk);
-		//#1; op = 11'b00111011011;
-		//ra = 128'hFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE;
-		@(posedge clk);
-		#1; //ra = 128'h00101131337377F7FF000000000000FF;
-		op = 11'b00111000100;
-		@(posedge clk);
+		op = 11'b00111000100;						//lqx
+		@(posedge clk); #1;
+		op = 8'b00100100;							//stqd
+		format = 4;
+		rt_st_odd = 128'h00000002000200020002000200020002;
+		@(posedge clk); #1;
+		op = 8'b00110100;							//lqd
+		@(posedge clk); #1;
+		op = 9'b001000001;							//stqa
+		format = 5;
+		rt_st_odd = 128'h00000003000300030003000300030003;
+		@(posedge clk); #1;
+		op = 9'b001100001;							//lqa
+		@(posedge clk); #1;
+		op = 0;										//nop
 		#100; $stop; // Stop simulation
 	end
 endmodule
