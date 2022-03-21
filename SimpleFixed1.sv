@@ -32,11 +32,14 @@ module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_wri
 
 	// TODO : Implement all instr
 
+	always_comb begin
+		rt_wb = rt_delay[1];
+		rt_addr_wb = rt_addr_delay[1];
+		reg_write_wb = reg_write_delay[1];
+	end
+
 	always_ff @(posedge clk) begin
 		if (reset == 1) begin
-			rt_wb = 0;
-			rt_addr_wb = 0;
-			reg_write_wb = 0;
 			rt_delay[1] <= 0;
 			rt_addr_delay[1] <= 0;
 			reg_write_delay[1] <= 0;
@@ -46,64 +49,23 @@ module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_wri
 			tmp = 0;
 		end
 		else begin
-			rt_wb <= rt_delay[1];
-			rt_addr_wb <= rt_addr_delay[1];
-			reg_write_wb <= reg_write_delay[1];
 			rt_delay[1] <= rt_delay[0];
 			rt_addr_delay[1] <= rt_addr_delay[0];
 			reg_write_delay[1] <= reg_write_delay[0];
 
-			rt_wb = rt_delay[1];
-			rt_addr_wb = rt_addr_delay[1];
-			reg_write_wb = reg_write_delay[1];
-
 			if (format == 0 && op == 0) begin					//nop : No Operation (Execute)
-				rt_delay[0] = 0;
-				rt_addr_delay[0] = 0;
-				reg_write_delay[0] = 0;
+				rt_delay[0] <= 0;
+				rt_addr_delay[0] <= 0;
+				reg_write_delay[0] <= 0;
 			end
 			else begin
-				rt_addr_delay[0] = rt_addr;
-				reg_write_delay[0] = reg_write;
+				rt_addr_delay[0] <= rt_addr;
+				reg_write_delay[0] <= reg_write;
 				if (format == 0) begin
 					case (op)
 						11'b00011001000 : begin					//ah : Add Halfword
-							$display("ah ");
-							$display("ra = %h rb = %h",ra,rb);
-							for (i=0; i<16; i=i+2) begin
-								if((($signed(ra[(i*8) +: 16]) ^ $signed(rb[(i*8) +: 16])) & mask[0:15]) ==0) begin
-									if($signed(ra[(i*8) +: 16]) >=0) begin
-										$display("pos %b %b ",$signed(max_value_16),$signed(max_value_16)-$signed(ra[(i*8) +: 16]));
-										if(($signed(max_value_16)-$signed(ra[(i*8) +: 16])) >= $signed(rb[(i*8) +: 16])) begin
-											rt_delay[0][(i*8) +: 16] = $signed(ra[(i*8) +: 16]) + $signed(rb[(i*8) +: 16]) ;
-										end
-										else begin
-											rt_delay[0][(i*8) +: 16] = max_value_16;
-										end
-									end
-									else begin
-										$display("neg %b %b",$signed(min_value_16),($signed(min_value_16)-$signed(ra[(i*8) +: 16])));
-										if(($signed(min_value_16)-$signed(ra[(i*8) +: 16])) <= $signed(rb[(i*8) +: 16])) begin
-											$display("compute");
-											rt_delay[0][(i*8) +: 16] = $signed(ra[(i*8) +: 16]) + $signed(rb[(i*8) +: 16]) ;
-										end
-										else begin
-											rt_delay[0][(i*8) +: 16] = min_value_16;
-										end
-									end
-								end
-								else begin
-										$display("sign mismatch");
-										if(ra[i*8]==1) begin
-											$display("ra neg");
-											rt_delay[0][(i*8) +: 16]  =  rb[(i*8) +: 16] + ((~ra[(i*8) +: 16])+1);
-										end
-										else begin
-											$display("rb neg %b ",(~rb[(i*8) +: 16])+1);
-											rt_delay[0][(i*8) +: 16]  =  ra[(i*8) +: 16] + ((~rb[(i*8) +: 16])+1);
-										end
-								end
-								$display("add half word  ra = %b rb = %b rt_delay[0] =  %b ", $signed(ra[(i*8) +: 16]) ,$signed(rb[(i*8) +: 16]),$signed(rt_delay[0][(i*8) +: 16]));
+							for (i=0; i<8; i=i+1) begin
+								rt_delay[0][(i*16) +: 16] <= $signed(ra[(i*16) +: 16]) + $signed(rb[(i*16) +: 16]);
 							end
 							$display("ra %h rb %h rt_delay %h ",ra,rb,rt_delay[0]);
 						end
@@ -403,9 +365,9 @@ module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_wri
 							$display("rt_delay = %h",rt_delay[0]);
 						end
 						default begin
-							rt_delay[0] = 0;
-							rt_addr_delay[0] = 0;
-							reg_write_delay[0] = 0;
+							rt_delay[0] <= 0;
+							rt_addr_delay[0] <= 0;
+							reg_write_delay[0] <= 0;
 						end
 					endcase
 				end

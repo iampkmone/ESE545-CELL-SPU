@@ -1,4 +1,4 @@
-module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb);
+module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb, fw_wb, fw_addr_wb, fw_write_wb);
 	input			clk, reset;
 	
 	//RF/FWD Stage
@@ -16,9 +16,9 @@ module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_writ
 	output logic			reg_write_wb;	//Will rt_wb write to RegTable
 	
 	//Internal Signals
-	logic [6:0][0:127]	fw_wb;			//Staging register for forwarded values
-	logic [6:0][0:6]	fw_addr_wb;		//Destination register for rt_wb
-	logic [6:0]			fw_write_wb;	//Will rt_wb write to RegTable
+	output logic [6:0][0:127]	fw_wb;			//Staging register for forwarded values
+	output logic [6:0][0:6]		fw_addr_wb;		//Destination register for rt_wb
+	output logic [6:0]			fw_write_wb;	//Will rt_wb write to RegTable
 	
 	logic [0:10]		fp1_op;			//Multiplexed opcode
 	logic [2:0]			fp1_format;		//Multiplexed format
@@ -113,9 +113,9 @@ module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_writ
 		fw_write_wb[0] <= 0;
 		
 		if (reset == 1) begin
-			rt_wb = 0;
-			rt_addr_wb = 0;
-			reg_write_wb = 0;
+			rt_wb <= 0;
+			rt_addr_wb <= 0;
+			reg_write_wb <= 0;
 			for (int i=6; i>0; i=i-1) begin
 				fw_wb [i] <= 0;
 				fw_addr_wb [i] <= 0;
