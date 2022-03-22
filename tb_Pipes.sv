@@ -34,40 +34,55 @@ module tb_Pipes();
 		reset = 0;											//@11ns, enable unit
 		
 		@(posedge clk); //#1;								//@15ns
-		instr_even = 32'b01011000100000001000000010000011;	//fa $3, $1, $2
-		instr_odd = 32'b00111011011000010100001000000110;	//shlqbi $6, $4, $5
+		instr_even = 32'b01000001100011111000011110000001;	//ilh $1, 0x1F0F
+		instr_odd = 32'b0;									//lnop
+		
+		@(posedge clk); //#1;								//@15ns
+		instr_even = 32'b01000001101010010111100000000010;	//ilh $2, 0x52F0
+		instr_odd = 32'b0;									//lnop
 		
 		@(posedge clk); //#1;
 		instr_even = 0; instr_odd = 0;
 		@(posedge clk);
-		@(posedge clk);
-		@(posedge clk);
-		@(posedge clk);
-		@(posedge clk);
 		
 		@(posedge clk); //#1;								//@20ns
-		instr_even = 32'b00001011111000001100000110000111;	//shlh $7, $3, $3
+		instr_even = 32'b00011001000000001000000010000011;	//ah $3, $1, $2
 		instr_odd = 32'b0;									//nop (ls)
 		
 		@(posedge clk); //#1; 
 		instr_even = 0; instr_odd = 0;
 		@(posedge clk);
-		@(posedge clk);
-		@(posedge clk);
 		
 		@(posedge clk); //#1;								//@25ns
-		instr_even = 32'b00011001000000001100001110001000;	//fa $8, $7, $3
+		instr_even = 32'b01000001100000000000000110000100;	//ilh $4, 0x0003
 		instr_odd = 32'b0;									//nop (ls)
 		
+		@(posedge clk); //#1; 
+		instr_even = 0; instr_odd = 0;
+		@(posedge clk);
+		
 		@(posedge clk); //#1; 								//@30ns
-		instr_even = 0;
-		instr_odd = 32'b00110011000000000011001000001010;	
+		instr_even = 32'b00001101000000000000001000000110;	//sfhi $6, 0 (!$4 + 1)
+		instr_odd = 0;	
+		
+		@(posedge clk); //#1; 
+		instr_even = 0; instr_odd = 0;
+		@(posedge clk);
 		
 		@(posedge clk); #1;									//@35ns
-		instr_even = 0;
+		instr_even = 32'b00001011101000011000000110000101;	//rothm $5, $3, $6
+		instr_odd = 32'b00111011100000010000000110000111;	//rotqby $7, $3, $4
+		
+		@(posedge clk); //#1; 
+		instr_even = 0; instr_odd = 0;
+		@(posedge clk);
+		
+		@(posedge clk); #1;									//@35ns
+		instr_even = 32'b00001011110000011000000110000101;	//rotmah $5, $3, $6
 		instr_odd = 0;
 		
 		@(posedge clk); #1;									//@40ns
+		instr_even = 0; instr_odd = 0;
 		
 		@(posedge clk); #1;									//@45ns
 		

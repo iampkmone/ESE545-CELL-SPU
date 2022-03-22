@@ -39,8 +39,8 @@ module tb_SinglePrecision();
 		format = 3'b000;
 		op = 11'b01111000100;						//mpy
 		rt_addr = 7'b0000011;						//RT = $r3
-		ra = 128'h00000007FFFFFFFF000A0009FFFFFFF5;	//Halfwords: 16'h0010
-		rb = 128'h00000002000100030004000500060008;	//Halfwords: 16'h0001
+		ra = 128'h00007FFFFFFFFFFF000A0009FFFFFFF5;	//Halfwords: 16'h0010
+		rb = 128'h00008000000100030004000500060008;	//Halfwords: 16'h0001
 		rc = 128'h000000020001000200040002FFF60002;
 		imm = 42;
 		reg_write = 1;
