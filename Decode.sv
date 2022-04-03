@@ -90,9 +90,10 @@ op_codes op;
 			stall_pc = 0;
 			op = check(instr_even_issue, instr_odd_issue);
 		end
+
 		else begin
 			$display($time," instr[0] %b instr[1] %b stall %d ",instr[0],instr[1], stall );
-			if(instr[0]!=32'h0000 && instr[1]!=32'h0000 ) begin
+			if(instr[0]!=32'h0000 && instr[1]!=32'h0000 && stall ==0) begin
 				// instr_even = instr[0];
 				// instr_odd = instr[1];s
 				op = check(instr[0],instr[1]);
@@ -116,28 +117,28 @@ op_codes op;
 
 					$display($time," Decode: no-op odd instruction needs update pc %d ", pc);
 					
-					stall_pc = pc-1;  // in this case we should increement pc with only one
+					stall_pc = pc;  // in this case we should increement pc with only one
 					stall = 1;
 					
 				end
 				else if(op.op_even!=0 && op.op_odd==0) begin
 					// Both instruction are even pipe
 					stall = 1;
-					stall_pc = pc-1; // in this case we should increement pc with only one
+					stall_pc = pc; // in this case we should increement pc with only one
 					// instr_even = instr[1];
 					// instr_odd = 32'h0000;
 					op = check(instr[0],32'h0000);
 					instr_even_issue = instr[1];
 					instr_odd_issue = 32'h0000;
 
-					stall_pc = pc-1;
+					stall_pc = pc;
 					$display($time," Decode: Both instruction are even pipe %d ",pc);
 				end
 				else if(op.op_even==0 && op.op_odd==0) begin
 					op = check(32'h0000,instr[0]);
 					instr_even_issue = instr[1];
 					instr_odd_issue = 32'h0000;
-					stall_pc = pc - 1;
+					stall_pc = pc ;
 					stall = 1;
 					$display($time, "Decode: Instruction are not aligned to even and odd pipe");
 
@@ -149,9 +150,7 @@ op_codes op;
 					$display($time," Decode : all good  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
 				end
 			end
-			else begin 
-				
-				stall =0;
+			else begin 				
 				if( stall==1) begin
 					op = check(instr_even_issue, instr_odd_issue);
 					$display($time," Decode : all good with stall  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
@@ -162,6 +161,7 @@ op_codes op;
 					op = check(instr[0],instr[1]);
 					$display($time," Decode: End of code");
 				end
+				stall =0;
 			end		
 
 		end

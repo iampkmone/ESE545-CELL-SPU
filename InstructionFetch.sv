@@ -91,14 +91,14 @@ module IF(clk, reset, ins_cache, pc, read_enable);
             end
             else begin
                 
-                pc <= pc_wb+2; // Incase of stall we rely  on pc_wb to start fetch of new instruction
+                pc <= pc_wb; // Incase of stall we rely  on pc_wb to start fetch of new instruction
+                $display($time,"IF: pc update to pc_wb %d pc %d" ,pc_wb, pc);
+                instr_d[0]<= 32'h0000;//ins_cache[pc_wb-pc_check];
+                instr_d[1]<= 32'h0000;//ins_cache[pc_wb+1-pc_check];
                 
-                instr_d[0]<=ins_cache[pc_wb-pc_check];
-                instr_d[1]<=ins_cache[pc_wb+1-pc_check];
-                
-                $display($time," IF: reading in using pc_wb");
-                $display($time," IF: ins %b ins %b pc %d pc_wb %d read_enable %d ",ins_cache[pc_wb], ins_cache[pc_wb+1],pc,pc_wb, read_enable);
-                $display($time," IF: ins %h ins %h pc %d pc_wb %d read_enable %d ",ins_cache[pc_wb], ins_cache[pc_wb+1],pc,pc_wb, read_enable);
+                // $display($time," IF: reading in using pc_wb");
+                // $display($time," IF: ins %b ins %b pc %d pc_wb %d read_enable %d ",ins_cache[pc_wb], ins_cache[pc_wb+1],pc,pc_wb, read_enable);
+                // $display($time," IF: ins %h ins %h pc %d pc_wb %d read_enable %d ",ins_cache[pc_wb], ins_cache[pc_wb+1],pc,pc_wb, read_enable);
 
             end
         end
