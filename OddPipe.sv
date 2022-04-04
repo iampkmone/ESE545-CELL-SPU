@@ -1,4 +1,4 @@
-module OddPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rt_st, imm, reg_write, pc_in, rt_wb, rt_addr_wb, reg_write_wb, pc_wb, branch_taken, fw_wb, fw_addr_wb, fw_write_wb);
+module OddPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rt_st, imm, reg_write, pc_in, rt_wb, rt_addr_wb, reg_write_wb, pc_wb, branch_taken, fw_wb, fw_addr_wb, fw_write_wb, first, branch_kill);
 	input			clk, reset;
 	
 	//RF/FWD Stage
@@ -10,6 +10,7 @@ module OddPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rt_st, imm, reg_wr
 	input [0:17]	imm;			//Immediate value, truncated based on format
 	input			reg_write;		//Will current instr write to RegTable
 	input [7:0]		pc_in;			//Program counter from IF stage
+	input			first;			//1 if first instr in pair; used for determining order of branch
 	
 	//WB Stage
 	output logic [0:127]	rt_wb;			//Output value of Stage 7
@@ -17,6 +18,7 @@ module OddPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rt_st, imm, reg_wr
 	output logic			reg_write_wb;	//Will rt_wb write to RegTable
 	output logic [7:0]		pc_wb;			//New program counter for branch
 	output logic			branch_taken;	//Was branch taken?
+	output logic			branch_kill;	//If branch is taken and branch instr is first in pair, kill twin instr
 	
 	//Internal Signals
 	output logic [6:0][0:127]	fw_wb;			//Staging register for forwarded values
@@ -47,13 +49,13 @@ module OddPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rt_st, imm, reg_wr
 	// TODO : Support forwarding signals
 	
 	Permute p1(.clk(clk), .reset(reset), .op(p1_op), .format(p1_format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .imm(imm), .reg_write(p1_reg_write), .rt_wb(p1_out),
-		.rt_addr_wb(p1_addr_out), .reg_write_wb(p1_write_out));
+		.rt_addr_wb(p1_addr_out), .reg_write_wb(p1_write_out), .branch_taken(branch_taken));
 	
 	LocalStore ls1(.clk(clk), .reset(reset), .op(ls1_op), .format(ls1_format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .rt_st(rt_st), .imm(imm), .reg_write(ls1_reg_write), .rt_wb(ls1_out),
-		.rt_addr_wb(ls1_addr_out), .reg_write_wb(ls1_write_out));
+		.rt_addr_wb(ls1_addr_out), .reg_write_wb(ls1_write_out), .branch_taken(branch_taken));
 	
 	Branch br1(.clk(clk), .reset(reset), .op(br1_op), .format(br1_format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .rt_st(rt_st), .imm(imm), .reg_write(br1_reg_write), .pc_in(pc_in), .rt_wb(br1_out),
-		.rt_addr_wb(br1_addr_out), .reg_write_wb(br1_write_out), .pc_wb(pc_wb), .branch_taken(branch_taken));
+		.rt_addr_wb(br1_addr_out), .reg_write_wb(br1_write_out), .pc_wb(pc_wb), .branch_taken(branch_taken), .first(first), .branch_kill(branch_kill));
 	
 	always_comb begin
 		p1_op = 0;

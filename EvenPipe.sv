@@ -1,4 +1,4 @@
-module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb, fw_wb, fw_addr_wb, fw_write_wb);
+module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb, branch_taken, fw_wb, fw_addr_wb, fw_write_wb);
 	input			clk, reset;
 	
 	//RF/FWD Stage
@@ -9,6 +9,7 @@ module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_writ
 	input [0:127]	ra, rb, rc;		//Values of source registers
 	input [0:17]	imm;			//Immediate value, truncated based on format
 	input			reg_write;		//Will current instr write to RegTable
+	input			branch_taken;	//Was branch taken?
 	
 	//WB Stage
 	output logic [0:127]	rt_wb;			//Output value of Stage 7
@@ -54,16 +55,17 @@ module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_writ
 	// TODO : Support forwarding signals
 	
 	SinglePrecision fp1(.clk(clk), .reset(reset), .op(fp1_op), .format(fp1_format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .rc(rc), .imm(imm), .reg_write(fp1_reg_write),
-		.rt_wb(fp1_out), .rt_addr_wb(fp1_addr_out), .reg_write_wb(fp1_write_out), .rt_int(fp1_int), .rt_addr_int(fp1_addr_int), .reg_write_int(fp1_write_int));
+		.rt_wb(fp1_out), .rt_addr_wb(fp1_addr_out), .reg_write_wb(fp1_write_out), .rt_int(fp1_int), .rt_addr_int(fp1_addr_int), .reg_write_int(fp1_write_int),
+		.branch_taken(branch_taken));
 	
 	SimpleFixed2 fx2(.clk(clk), .reset(reset), .op(fx2_op), .format(fx2_format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .imm(imm), .reg_write(fx2_reg_write), .rt_wb(fx2_out),
-		.rt_addr_wb(fx2_addr_out), .reg_write_wb(fx2_write_out));
+		.rt_addr_wb(fx2_addr_out), .reg_write_wb(fx2_write_out), .branch_taken(branch_taken));
 	
 	Byte b1(.clk(clk), .reset(reset), .op(b1_op), .format(b1_format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .imm(imm), .reg_write(b1_reg_write), .rt_wb(b1_out),
-		.rt_addr_wb(b1_addr_out), .reg_write_wb(b1_write_out));
+		.rt_addr_wb(b1_addr_out), .reg_write_wb(b1_write_out), .branch_taken(branch_taken));
 	
 	SimpleFixed1 fx1(.clk(clk), .reset(reset), .op(fx1_op), .format(fx1_format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .rt_st(rc), .imm(imm), .reg_write(fx1_reg_write), .rt_wb(fx1_out),
-		.rt_addr_wb(fx1_addr_out), .reg_write_wb(fx1_write_out));
+		.rt_addr_wb(fx1_addr_out), .reg_write_wb(fx1_write_out), .branch_taken(branch_taken));
 		
 	
 	always_comb begin
@@ -82,6 +84,7 @@ module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_writ
 		fx1_op = 0;
 		fx1_format = 0;
 		fx1_reg_write = 0;
+		
 		
 		case (unit)									//Mux to determine which unit will take the instr
 			2'b00 : begin							//Instr going to fp1
