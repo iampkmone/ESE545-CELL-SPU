@@ -1,6 +1,5 @@
+import sys
 class Assembler:
-
-
     def __init__(self,ins_list_name,input_file,output_file) -> None:
         self.ins_list_name =  ins_list_name
         self.ins_opcode_mapping = dict()
@@ -139,9 +138,6 @@ class Assembler:
             ins_binary = opcode+imm10+ra+rt
         elif format[0] == 5:
 
-            # opcode rt,value
-            # op[0-8]imm16[9-24]rt[25-31]
-            print(ins)
             if len(ins)==3:
                 rt = bin(int(ins[1])).replace("0b","")
                 imm16 = bin(int(ins[2])).replace("0b","")
@@ -168,25 +164,29 @@ class Assembler:
 
         #print(ins_binary,len(ins_binary))
         return ins_binary
-#0100001 010100000000000001 1011000
     def fill(self,seq,width):
-        #print("first ",seq)
         neg = False
         if len(seq) > 0 and seq[0]=='-':
             neg = True
         seq =  seq.replace("-","")
         wide_seq = seq.zfill(width)
-        #print("wide_seq ",wide_seq,wide_seq[0])
 
         if neg:
             wide_seq=str(1)+wide_seq[1:]
-        #print("second ",wide_seq,wide_seq[0])
-        # return wide_seq[::-1]
         return wide_seq
 
 
-asm = Assembler(ins_list_name="instructions.lst", input_file="test1.asm",
-                output_file="out.obj")
+
+if len(sys.argv) ==1:
+    print("Please mention the asm file: python assembler <input>.asm -o <out>")
+    sys.exit(0)
+input_file_name = sys.argv[1]
+output_file_name = "out"
+if len(sys.argv) > 3 and sys.argv[2] =='-o':
+    output_file_name = sys.argv[3]
+
+asm = Assembler(ins_list_name="instructions.lst", input_file=input_file_name,
+                output_file=output_file_name)
 
 
 asm.parse_input()
