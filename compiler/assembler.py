@@ -13,15 +13,16 @@ class Assembler:
 
         with open(self.ins_list_name,'r') as ins_lst:
             for line in ins_lst.readlines():
-                # #print(line)
+                # print(line)
                 ins,opcode =  line.split("\t")
                 memonic = ins.split(" ")[0]
                 opcode = opcode.strip()
                 self.ins_opcode_mapping[memonic]=opcode
-                if "rt, ra, rb" in ins:
-                    self.opcode_ins_mapping[opcode]=[0,ins]
-                elif "rt, ra, rb, rc" in ins:
+
+                if "rt, ra, rb, rc" in ins:
                     self.opcode_ins_mapping[opcode]=[1,ins]
+                elif "rt, ra, rb" in ins:
+                    self.opcode_ins_mapping[opcode]=[0,ins]
                 elif "rt, ra, imm7" in ins:
                     self.opcode_ins_mapping[opcode]=[2,ins]
                 elif "rt, ra, imm8" in ins:
@@ -53,7 +54,7 @@ class Assembler:
                 opcode = self.ins_opcode_mapping[memonic]
                 #print(opcode)
                 format = self.opcode_ins_mapping[opcode]
-                #print("format ",format)
+                # print("format ",format)
                 binary = self.compute(format,opcode,ins)
                 object.write(binary+"\n")
 
@@ -61,7 +62,7 @@ class Assembler:
     def compute(self,format,opcode,ins):
         ins_binary = "".zfill(32)
         #print(ins_binary,len(ins_binary))
-        #print("ins {}".format(ins))
+        # print("ins {}".format(ins))
         if format[0] == 0:
             # opcode rt ra rb
             # op[0-10]rb[11-17]ra[18-24]rt[25-31]
@@ -87,7 +88,7 @@ class Assembler:
             ra = self.fill(ra,7)
             rb = self.fill(rb,7)
             rc = self.fill(rc,7)
-            #print(rt,ra,rb,rc)
+            # print(rt,ra,rb,rc)
             ins_binary = opcode+rt+rb+ra+rc
         elif format[0] == 2:
             # opcode rt,ra,imm7
