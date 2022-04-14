@@ -29,7 +29,7 @@ class Assembler:
                     self.opcode_ins_mapping[opcode]=[3,ins]
                 elif "rt, ra, imm10" in ins or "rt, imm10(ra)" in ins :
                     self.opcode_ins_mapping[opcode]=[4,ins]
-                elif "rt, ra, imm16" in ins:
+                elif "rt, imm16" in ins or "imm16" in ins :
                     self.opcode_ins_mapping[opcode]=[5,ins]
                 elif "rt, imm18" in ins:
                     self.opcode_ins_mapping[opcode]=[6,ins]
@@ -141,13 +141,17 @@ class Assembler:
 
             # opcode rt,value
             # op[0-8]imm16[9-24]rt[25-31]
-            rt = bin(int(ins[1])).replace("0b","")
+            print(ins)
+            if len(ins)==3:
+                rt = bin(int(ins[1])).replace("0b","")
+                imm16 = bin(int(ins[2])).replace("0b","")
+            else:
+                rt="0"
+                imm16 = bin(int(ins[1])).replace("0b","")
             rt = self.fill(rt,7)
-
-            imm16 = bin(int(ins[2])).replace("0b","")
             imm16 = self.fill(imm16,16)
-            ins_binary = opcode+imm10+ra+rt
 
+            ins_binary = opcode+imm16+rt
         elif format[0] == 6:
             # opcode rt,value
             # op[0-8]imm16[9-24]rt[25-31]
