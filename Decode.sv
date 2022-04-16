@@ -1,4 +1,4 @@
-module Decode(clk, reset, instr, pc, stall_pc,stall);
+module Decode(clk, reset, instr, pc, stall_pc, stall);
     input logic			clk, reset;
     // input logic[0:63]    instr;                                  // From Instruction File (Fetch Stage)
     input logic[0:31] instr[0:1];
@@ -7,10 +7,11 @@ module Decode(clk, reset, instr, pc, stall_pc,stall);
 	logic [0:31]	instr_even, instr_odd,instr_odd_issue,instr_even_issue;					//Instr from decoder
 	
 	//Signals for handling branches
-	logic[7:0]	pc_wb;									//New program counter for branch
-	output logic [7:0] stall_pc;
-	output logic stall;
-	logic		branch_taken;							//Was branch taken?
+	logic [7:0]			pc_wb;									//New program counter for branch
+	output logic [7:0]	stall_pc;
+	output logic 		stall;
+	logic				branch_taken;							//Was branch taken?
+	logic				first_odd, first_odd_out;				//1 if odd instr is first in pair, 0 else; Used for branch flushing
 
     input logic[7:0] pc;                           // PC for the current state
 
@@ -43,9 +44,8 @@ op_codes op;
         .rt_addr_even(rt_addr_even), .rt_addr_odd(rt_addr_odd),
         .format_even(format_even), .format_odd(format_odd),
         .imm_even(imm_even), .imm_odd(imm_odd),
-        .reg_write_even(reg_write_even), .reg_write_odd(reg_write_odd)
+        .reg_write_even(reg_write_even), .reg_write_odd(reg_write_odd), .first_odd(first_odd_out)
         );
-
 
 
 	always_ff @( posedge clk ) begin : decode_op
@@ -63,6 +63,7 @@ op_codes op;
 		unit_odd <= op.unit_odd;
 		format_even <= op.format_even;
 		format_odd <= op.format_odd;
+		first_odd_out <= first_odd;
 		$display("================================================================");
 		$display($time," Decode: OP struct values ");
 		$display($time," Decode: instr_even %b instr_odd %b ",op.instr_even, op.instr_odd);
@@ -90,10 +91,16 @@ op_codes op;
 			stall_pc = 0;
 			op = check(instr_even_issue, instr_odd_issue);
 		end
-
 		else begin
 			$display($time," instr[0] %b instr[1] %b stall %d ",instr[0],instr[1], stall );
-			if(instr[0]!=32'h0000 && instr[1]!=32'h0000 && stall ==0) begin
+			if (branch_taken == 1) begin
+				stall_pc = pc_wb;
+				stall = 1;
+				instr_even_issue = 0;
+				instr_odd_issue = 0;
+				op = check(instr_even_issue, instr_odd_issue);
+			end
+			else if(instr[0]!=32'h0000 && instr[1]!=32'h0000 && stall ==0) begin
 				// instr_even = instr[0];
 				// instr_odd = instr[1];s
 				op = check(instr[0],instr[1]);
@@ -120,6 +127,7 @@ op_codes op;
 					stall_pc = pc;  // in this case we should increement pc with only one
 					stall = 1;
 					
+					first_odd = 0;				//Don't care but need val
 				end
 				else if(op.op_even!=0 && op.op_odd==0) begin
 					// Both instruction are even pipe
@@ -131,22 +139,28 @@ op_codes op;
 					instr_even_issue = instr[1];
 					instr_odd_issue = 32'h0000;
 
-					stall_pc = pc;
+					first_odd = 0;				//Don't care but need val
 					$display($time," Decode: Both instruction are even pipe %d ",pc);
 				end
 				else if(op.op_even==0 && op.op_odd==0) begin
-					op = check(32'h0000,instr[0]);
-					instr_even_issue = instr[1];
-					instr_odd_issue = 32'h0000;
-					stall_pc = pc ;
-					stall = 1;
-					$display($time, "Decode: Instruction are not aligned to even and odd pipe");
+					//op = check(32'h0000,instr[0]);
+					//instr_even_issue = instr[1];
+					//instr_odd_issue = 32'h0000;
+					//stall_pc = pc ;
+					//stall = 1;
+					op = check(instr[1],instr[0]);
+					stall_pc = 0;
+					stall = 0;
+					first_odd = 1;				//Odd instr first, then even
+					$display($time," Decode : all good  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
+					//$display($time, "Decode: Instruction are not aligned to even and odd pipe");
 
 					$display($time,"Decode: op_even %b op_odd %b ", op.op_even, op.op_odd);
 				end		
 				else begin
 					stall_pc = 0;
 					stall = 0;
+					first_odd = 0;				//Even instr first, then odd
 					$display($time," Decode : all good  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
 				end
 			end
