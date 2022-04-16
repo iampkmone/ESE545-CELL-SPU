@@ -89,6 +89,7 @@ op_codes op;
 			instr_even_issue = 32'h0000;
 			stall = 0;
 			stall_pc = 0;
+			first_odd = 0;
 			op = check(instr_even_issue, instr_odd_issue);
 		end
 		else begin
@@ -107,7 +108,7 @@ op_codes op;
 				// both instruction is valid
 				$display($time," Decode: op_even %b op_odd %b ",op.op_even, op.op_odd);
 				// $display($time," Decode: op_even %b op_odd %b ",check(instr[0],instr[1]).op_even, check(instr[0],instr[1]).op_odd);
-				if(op.op_even==0 && op.op_odd!=0) begin
+				if(op.op_even==0 && op.op_odd!=0) begin															//Two odd instr in pair
 					// both instruction are odd pipe,
 					// first instruction should be execute
 					// op.instr_odd = instr[0];
@@ -129,7 +130,7 @@ op_codes op;
 					
 					first_odd = 0;				//Don't care but need val
 				end
-				else if(op.op_even!=0 && op.op_odd==0) begin
+				else if(op.op_even!=0 && op.op_odd==0) begin													//Two even instr in pair
 					// Both instruction are even pipe
 					stall = 1;
 					stall_pc = pc; // in this case we should increement pc with only one
@@ -142,26 +143,40 @@ op_codes op;
 					first_odd = 0;				//Don't care but need val
 					$display($time," Decode: Both instruction are even pipe %d ",pc);
 				end
-				else if(op.op_even==0 && op.op_odd==0) begin
-					//op = check(32'h0000,instr[0]);
-					//instr_even_issue = instr[1];
-					//instr_odd_issue = 32'h0000;
-					//stall_pc = pc ;
-					//stall = 1;
-					op = check(instr[1],instr[0]);
-					stall_pc = 0;
-					stall = 0;
-					first_odd = 1;				//Odd instr first, then even
-					$display($time," Decode : all good  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
-					//$display($time, "Decode: Instruction are not aligned to even and odd pipe");
-
-					$display($time,"Decode: op_even %b op_odd %b ", op.op_even, op.op_odd);
+				else if(op.op_even==0 && op.op_odd==0) begin													//First instr odd, second even
+					if ((op.rt_addr_even != op.rt_addr_odd) || (op.reg_write_even != op.reg_write_odd)) begin
+						op = check(instr[1],instr[0]);
+						stall_pc = 0;
+						stall = 0;
+						first_odd = 1;				//Odd instr first, then even
+						$display($time," Decode : all good  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
+					end
+					else begin							//If rt_addr are same with both reg_wr enabled, with odd instr first
+						stall = 1;
+						stall_pc = pc;
+						op = check(32'h0000,instr[0]);
+						instr_even_issue = instr[1];
+						instr_odd_issue = 32'h0000;
+						first_odd = 0;				//Don't care but need val
+						$display($time," Decode: Both instructions write to same destination register, issuing odd first %d ",pc);
+					end
 				end		
-				else begin
-					stall_pc = 0;
-					stall = 0;
-					first_odd = 0;				//Even instr first, then odd
-					$display($time," Decode : all good  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
+				else begin																						//First instr even, second odd
+					if ((op.rt_addr_even != op.rt_addr_odd) || (op.reg_write_even != op.reg_write_odd)) begin
+						stall_pc = 0;
+						stall = 0;
+						first_odd = 0;				//Even instr first, then odd
+						$display($time," Decode : all good  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
+					end
+					else begin							//If rt_addr are same with both reg_wr enabled, with even instr first
+						stall = 1;
+						stall_pc = pc;
+						op = check(instr[0],32'h0000);
+						instr_even_issue = 32'h0000;
+						instr_odd_issue = instr[1];
+						first_odd = 0;				//Don't care but need val
+						$display($time," Decode: Both instructions write to same destination register, issuing even first %d ",pc);
+					end
 				end
 			end
 			else begin 				
