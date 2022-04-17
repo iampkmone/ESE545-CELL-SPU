@@ -5,9 +5,9 @@ ila 13 -10
 lqa 1 0
 lqa 2 2
 mpyi 5 4 3
+bra 5
 fm 3 2 1
 lqa 1 1
 lqa 2 3
-bra 10
 lnop
 stop

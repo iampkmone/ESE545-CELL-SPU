@@ -18,7 +18,7 @@ module tb_InstructionFetch();
     initial begin
         
 		// $readmemb("./ins.data", ins_mem);
-        $readmemb("./ins1.data", ins_mem);
+        $readmemb("./compiler/out", ins_mem);
 		for(integer i=0;i<17;i++) begin
 			$display("PC %d %b", i, ins_mem[i]);
 		end
