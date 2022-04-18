@@ -20,8 +20,6 @@ module LocalStore(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_write
 	logic [5:0][0:6]	rt_addr_delay;		//Destination register for rt_wb
 	logic [5:0]			reg_write_delay;	//Will rt_wb write to RegTable
 	
-	integer				i, j;				//7-bit counters for loops
-	
 	logic [0:127] mem [0:2047];				//32KB local memory
 	
 	always_comb begin
@@ -35,20 +33,22 @@ module LocalStore(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_write
 			rt_delay[5] <= 0;
 			rt_addr_delay[5] <= 0;
 			reg_write_delay[5] <= 0;
-			for (i=0; i<5; i=i+1) begin
+			for (int i=0; i<5; i=i+1) begin
 				rt_delay[i] <= 0;
 				rt_addr_delay[i] <= 0;
 				reg_write_delay[i] <= 0;
 			end
-			for (i=0; i<2048; i=i+1)
-				mem[i] <= 0;
+			for (logic [0:11] i=0; i<2048; i=i+1) begin
+				//mem[i] <= 0;
+				mem[i] <= {i*4, (i*4 + 1), (i*4 + 2), (i*4 + 3)};
+			end
 		end
 		else begin
 			rt_delay[5] <= rt_delay[4];
 			rt_addr_delay[5] <= rt_addr_delay[4];
 			reg_write_delay[5] <= reg_write_delay[4];
 			
-			for (i=0; i<4; i=i+1) begin
+			for (int i=0; i<4; i=i+1) begin
 				rt_delay[i+1] <= rt_delay[i];
 				rt_addr_delay[i+1] <= rt_addr_delay[i];
 				reg_write_delay[i+1] <= reg_write_delay[i];
