@@ -23,6 +23,9 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 	// logic [0:127]	ra_even, rb_even, rc_even, ra_odd, rb_odd, rt_st_odd;	//Register values from RegTable
 	logic [0:17]	imm_even, imm_odd;						//Full possible immediate value (used with format)
 	logic			reg_write_even, reg_write_odd;			//1 if instr will write to rt, else 0
+	
+	logic 			finished;								//Flag signalling end of program. System will not issue new instr when finished
+	logic			first_cyc;								//Due to how finished is detected, workaround is needed to prevent flag after reset
 
 typedef struct { 
 	logic [0:31]	instr_even, instr_odd;	
@@ -74,9 +77,11 @@ op_codes op;
 		$display($time," Decode: unit_even %d unit_odd %d ",op.unit_even, op.unit_odd);
 		$display($time," Decode: format_even %d format_odd %d ",op.format_even, op.format_odd);
 		$display("================================================================");
-
-
+		
+		first_cyc <= reset;		//flag is always high after reset and low otherwise
 	end
+	
+	
 	//Decode logic (Note: Will be placed in decode/hazard unit in final submission)
     // always_ff @(posedge clk ) begin
 	always_comb begin
@@ -91,6 +96,7 @@ op_codes op;
 			stall_pc = 0;
 			first_odd = 0;
 			op = check(instr_even_issue, instr_odd_issue);
+			finished = 0;
 		end
 		else begin
 			$display($time," instr[0] %b instr[1] %b stall %d ",instr[0],instr[1], stall );
@@ -100,11 +106,23 @@ op_codes op;
 				instr_even_issue = 0;
 				instr_odd_issue = 0;
 				op = check(instr_even_issue, instr_odd_issue);
+				finished = 0;		//If branch is taken right as program finishes, system must undo finished flag
 			end
-			else if(instr[0]!=32'h0000 && instr[1]!=32'h0000 && stall ==0) begin
+			else if (finished) begin			//If program is finished, do not issue any more instr
+				instr_odd_issue = 32'h0000;
+				instr_even_issue = 32'h0000;
+				stall = 1;
+				stall_pc = 0;
+				first_odd = 0;
+				op = check(0, 0);
+				finished = 1;
+			end
+			else if(instr[0]!=32'h0000 && stall ==0) begin
 				// instr_even = instr[0];
 				// instr_odd = instr[1];s
 				op = check(instr[0],instr[1]);
+				if (instr[1] == 0)
+					finished = 1;
 				// both instruction is valid
 				$display($time," Decode: op_even %b op_odd %b ",op.op_even, op.op_odd);
 				// $display($time," Decode: op_even %b op_odd %b ",check(instr[0],instr[1]).op_even, check(instr[0],instr[1]).op_odd);
@@ -150,6 +168,12 @@ op_codes op;
 						stall = 0;
 						first_odd = 1;				//Odd instr first, then even
 						$display($time," Decode : all good  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
+						
+						$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
+						$display($time," %b %b ",instr[0], instr[1]);
+						$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
+						if (instr[0] == 32'h0000 || instr[1] == 32'h0000)
+							finished = 1;			//Check for stop instr
 					end
 					else begin							//If rt_addr are same with both reg_wr enabled, with odd instr first
 						stall = 1;
@@ -167,6 +191,12 @@ op_codes op;
 						stall = 0;
 						first_odd = 0;				//Even instr first, then odd
 						$display($time," Decode : all good  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
+						
+						$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
+						$display($time," %b %b ",instr[0], instr[1]);
+						$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
+						if (instr[0] == 32'h0000 || instr[1] == 32'h0000)
+							finished = 1;			//Check for stop instr
 					end
 					else begin							//If rt_addr are same with both reg_wr enabled, with even instr first
 						stall = 1;
@@ -188,6 +218,8 @@ op_codes op;
 				else begin
 					// end of code
 					op = check(instr[0],instr[1]);
+					if (!first_cyc)		//Workaround needed to prevent immediate program stop after reset
+						finished = 1;
 					$display($time," Decode: End of code");
 				end
 				stall =0;
