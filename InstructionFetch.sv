@@ -3,7 +3,7 @@ module IF(clk, reset, ins_cache, pc, read_enable);
     input logic clk;
     input logic reset;
            
-    input logic[0:31] ins_cache[0:15];  // Instruction line buffer , stores 64B instruction
+    input logic[0:31] ins_cache[0:255];  // Instruction line buffer , stores 64B instruction
 
     
     logic[0:31] instr_d[0:1];           // 2 instruction sent to DECODE stage
@@ -15,7 +15,7 @@ module IF(clk, reset, ins_cache, pc, read_enable);
     output logic[7:0]   pc;
     
     logic[7:0]	pc_wb;                  // pc_wb access as reset PC signal for IF to start new instr read position
-    logic[7:0] pc_check;                // used for checkpointing, to adjust the pc while reading from ins_cache
+    integer pc_check;                // used for checkpointing, to adjust the pc while reading from ins_cache
 
 
     Decode decode(clk, reset, instr_d, pc, pc_wb, stall);
@@ -28,12 +28,12 @@ module IF(clk, reset, ins_cache, pc, read_enable);
             end
             else begin
                 // read_enable =0;
-                if(pc_wb-pc_check > 15) begin
+                if(pc_wb-pc_check > 255) begin
                     pc_check = pc_check + pc_wb;
                     read_enable =1;
                     $display($time,"IF: Prefetch pc_check %d pc_wb %d ", pc_check, pc_wb);
                 end
-                else if(pc-pc_check == 16) begin
+                else if(pc-pc_check == 256) begin
                     pc_check = pc+pc_check; // Need to handle boundary instruction
                     read_enable =1;
                     $display($time,"IF: Prefetch  pc_check %d pc %d ", pc_check, pc);

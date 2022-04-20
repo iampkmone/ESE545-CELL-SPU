@@ -1,7 +1,7 @@
 module tb_InstructionFetch();
 	logic			clk, reset;
 	logic[0:31] ins_mem[0:100];
-	logic[0:31] instr[0:15];
+	logic[0:31] instr[0:255];
 	logic read_enable,stall;
 	logic[7:0]   pc;
 
