@@ -47,7 +47,7 @@ rotmai rt, ra, imm7	00001111010
 cflts rt, ra, imm8	0111011000
 cfltu rt, ra, imm8	0111011001
 mpyi rt, ra, imm10	01110100
-mpyui rt, ra, rb	01110101
+mpyui rt, ra, imm10	01110101
 ahi rt, ra, imm10	00011101
 ai rt, ra, imm10	00011100
 sfhi rt, ra, imm10	00001101
