@@ -61,8 +61,8 @@ class Assembler:
 
     def compute(self,format,opcode,ins):
         ins_binary = "".zfill(32)
-        #print(ins_binary,len(ins_binary))
-        # print("ins {}".format(ins))
+        print(format,ins_binary,len(ins_binary))
+        print("ins {}".format(ins))
         if format[0] == 0:
             # opcode rt ra rb
             # op[0-10]rb[11-17]ra[18-24]rt[25-31]
@@ -93,26 +93,26 @@ class Assembler:
         elif format[0] == 2:
             # opcode rt,ra,imm7
             # op[0-10]imm7[11-17]ra[18-24]rt[25-31]
-
+            mask = 0b1111111
             rt = bin(int(ins[1])).replace("0b","")
             ra = bin(int(ins[2])).replace("0b","")
-            imm7 = bin(int(ins[3])).replace("0b","")
+            imm7 = bin(int(ins[3]) & mask).replace("0b","")
 
             rt = self.fill(rt,7)
             ra = self.fill(ra,7)
-            imm7 = self.fill(imm7,7)
+            imm7 = self.fill(imm7 & mask,7)
             ins_binary = opcode+rt+ra+imm7
 
         elif format[0] == 3:
             # opcode rt,ra,imm8
             # op[0-9]imm8[10-17]ra[18-24]rt[25-31]
-
+            mask = 0b11111111
             rt = bin(int(ins[1])).replace("0b","")
             ra = bin(int(ins[2])).replace("0b","")
-            imm8 = bin(int(ins[3])).replace("0b","")
+            imm8 = bin(int(ins[3]) & mask).replace("0b","")
             rt = self.fill(rt,7)
             ra = self.fill(ra,7)
-            imm8 = self.fill(imm8,8)
+            imm8 = self.fill(imm8 & mask,8)
             ins_binary = opcode+rt+ra+imm8
 
 
@@ -121,6 +121,8 @@ class Assembler:
             # op[0-7]imm10[8-17]ra[18-24]rt[25-31]
             rt = bin(int(ins[1])).replace("0b","")
             rt = self.fill(rt,7)
+            mask = 0b1111111111
+
             if '(' in format[1]:
                 # opcode rt, symbol(ra)
                 imm10 = ins[2].split('(')[0]
@@ -130,33 +132,37 @@ class Assembler:
                 imm10 = ins[3]
                 ra = ins[2]
 
-            #print(imm10,ra)
-            imm10 = bin(int(imm10)).replace("0b","")
+            # print(imm10,ra)
+            imm10 = bin(int(imm10)  & mask).replace("0b","")
             imm10 = self.fill(imm10,10)
 
             ra = bin(int(ra)).replace("0b","")
             ra = self.fill(ra,7)
             ins_binary = opcode+imm10+ra+rt
         elif format[0] == 5:
-
+            print(ins)
+            mask = 0b1111111111111111
             if len(ins)==3:
                 rt = bin(int(ins[1])).replace("0b","")
-                imm16 = bin(int(ins[2])).replace("0b","")
+                imm16 = bin(int(ins[2]) & mask).replace("0b","")
             else:
                 rt="0"
-                imm16 = bin(int(ins[1])).replace("0b","")
+                imm16 = bin(int(ins[1]) & mask ).replace("0b","")
+
+            print(rt,imm16)
             rt = self.fill(rt,7)
             imm16 = self.fill(imm16,16)
-
+            print(rt,imm16)
             ins_binary = opcode+imm16+rt
         elif format[0] == 6:
             # opcode rt,value
             # op[0-8]imm16[9-24]rt[25-31]
+            mask = 0b111111111111111111
             rt = bin(int(ins[1])).replace("0b","")
             rt = self.fill(rt,7)
 
             imm18 = bin(int(ins[2])).replace("0b","")
-            imm18 = self.fill(imm18,18)
+            imm18 = self.fill(imm18 & mask,18)
             ins_binary = opcode+imm18+rt
         else:
             ins_binary = opcode + self.fill("",32-len(opcode))
