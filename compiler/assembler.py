@@ -161,8 +161,8 @@ class Assembler:
             rt = bin(int(ins[1])).replace("0b","")
             rt = self.fill(rt,7)
 
-            imm18 = bin(int(ins[2])).replace("0b","")
-            imm18 = self.fill(imm18 & mask,18)
+            imm18 = bin(int(ins[2]) & mask).replace("0b","")
+            imm18 = self.fill(imm18 ,18)
             ins_binary = opcode+imm18+rt
         else:
             ins_binary = opcode + self.fill("",32-len(opcode))
