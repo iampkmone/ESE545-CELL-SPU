@@ -1,4 +1,4 @@
-module LocalStore(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb, branch_taken);
+module LocalStore(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb, branch_taken, rt_addr_delay, reg_write_delay);
 	input			clk, reset;
 	
 	//RF/FWD Stage
@@ -17,8 +17,8 @@ module LocalStore(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_write
 	
 	//Internal Signals
 	logic [5:0][0:127]	rt_delay;			//Staging register for calculated values
-	logic [5:0][0:6]	rt_addr_delay;		//Destination register for rt_wb
-	logic [5:0]			reg_write_delay;	//Will rt_wb write to RegTable
+	output logic [5:0][0:6]	rt_addr_delay;		//Destination register for rt_wb
+	output logic [5:0]		reg_write_delay;	//Will rt_wb write to RegTable
 	
 	logic [0:127] mem [0:2047];				//32KB local memory
 	

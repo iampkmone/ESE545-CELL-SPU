@@ -1,4 +1,5 @@
-module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb, branch_taken, fw_wb, fw_addr_wb, fw_write_wb);
+module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb, branch_taken, fw_wb, fw_addr_wb, fw_write_wb,
+	rt_addr_delay, reg_write_delay);
 	input			clk, reset;
 	
 	//RF/FWD Stage
@@ -52,20 +53,38 @@ module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_writ
 	logic [0:6]			fx1_addr_out;	//Destination register for rt_wb
 	logic				fx1_write_out;	//Will rt_wb write to RegTable
 	
-	// TODO : Support forwarding signals
+	//Internal Signals for Handling RAW Hazards
+	output logic [6:0][0:6]	rt_addr_delay;			//Destination register for rt_wb
+	output logic [6:0]		reg_write_delay;		//Will rt_wb write to RegTable
+	
+	logic [6:0][0:6]	rt_addr_delay_fp1;		//Destination register for rt_wb
+	logic [6:0]			reg_write_delay_fp1;	//Will rt_wb write to RegTable
+	
+	logic [3:0][0:6]	rt_addr_delay_fx2;		//Destination register for rt_wb
+	logic [3:0]			reg_write_delay_fx2;	//Will rt_wb write to RegTable
+	
+	logic [3:0][0:6]	rt_addr_delay_b1;		//Destination register for rt_wb
+	logic [3:0]			reg_write_delay_b1;		//Will rt_wb write to RegTable
+	
+	logic [1:0][0:6]	rt_addr_delay_fx1;		//Destination register for rt_wb
+	logic [1:0]			reg_write_delay_fx1;	//Will rt_wb write to RegTable
+	
 	
 	SinglePrecision fp1(.clk(clk), .reset(reset), .op(fp1_op), .format(fp1_format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .rc(rc), .imm(imm), .reg_write(fp1_reg_write),
 		.rt_wb(fp1_out), .rt_addr_wb(fp1_addr_out), .reg_write_wb(fp1_write_out), .rt_int(fp1_int), .rt_addr_int(fp1_addr_int), .reg_write_int(fp1_write_int),
-		.branch_taken(branch_taken));
-	
+		.branch_taken(branch_taken), .rt_addr_delay(rt_addr_delay_fp1), .reg_write_delay(reg_write_delay_fp1));
+
 	SimpleFixed2 fx2(.clk(clk), .reset(reset), .op(fx2_op), .format(fx2_format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .imm(imm), .reg_write(fx2_reg_write), .rt_wb(fx2_out),
-		.rt_addr_wb(fx2_addr_out), .reg_write_wb(fx2_write_out), .branch_taken(branch_taken));
-	
+		.rt_addr_wb(fx2_addr_out), .reg_write_wb(fx2_write_out), .branch_taken(branch_taken),
+		.rt_addr_delay(rt_addr_delay_fx2), .reg_write_delay(reg_write_delay_fx2));
+
 	Byte b1(.clk(clk), .reset(reset), .op(b1_op), .format(b1_format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .imm(imm), .reg_write(b1_reg_write), .rt_wb(b1_out),
-		.rt_addr_wb(b1_addr_out), .reg_write_wb(b1_write_out), .branch_taken(branch_taken));
-	
+		.rt_addr_wb(b1_addr_out), .reg_write_wb(b1_write_out), .branch_taken(branch_taken),
+		.rt_addr_delay(rt_addr_delay_b1), .reg_write_delay(reg_write_delay_b1));
+
 	SimpleFixed1 fx1(.clk(clk), .reset(reset), .op(fx1_op), .format(fx1_format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .rt_st(rc), .imm(imm), .reg_write(fx1_reg_write), .rt_wb(fx1_out),
-		.rt_addr_wb(fx1_addr_out), .reg_write_wb(fx1_write_out), .branch_taken(branch_taken));
+		.rt_addr_wb(fx1_addr_out), .reg_write_wb(fx1_write_out), .branch_taken(branch_taken),
+		.rt_addr_delay(rt_addr_delay_fx1), .reg_write_delay(reg_write_delay_fx1));
 		
 	
 	always_comb begin
@@ -84,6 +103,24 @@ module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_writ
 		fx1_op = 0;
 		fx1_format = 0;
 		fx1_reg_write = 0;
+		
+		for (int i=0; i < 6; i++) begin
+			rt_addr_delay[i] = rt_addr_delay[i] | rt_addr_delay_fp1[i];
+			reg_write_delay[i] = rt_addr_delay[i] | reg_write_delay_fp1[i];
+		end
+		
+		for (int i=0; i < 3; i++) begin
+			rt_addr_delay[i] = rt_addr_delay[i] | rt_addr_delay_fx2[i];
+			reg_write_delay[i] = rt_addr_delay[i] | reg_write_delay_fx2[i];
+			
+			rt_addr_delay[i] = rt_addr_delay[i] | rt_addr_delay_b1[i];
+			reg_write_delay[i] = rt_addr_delay[i] | reg_write_delay_b1[i];
+		end
+		
+		for (int i=0; i < 1; i++) begin
+			rt_addr_delay[i] = rt_addr_delay[i] | rt_addr_delay_fx1[i];
+			reg_write_delay[i] = rt_addr_delay[i] | reg_write_delay_fx1[i];
+		end
 		
 		
 		case (unit)									//Mux to determine which unit will take the instr

@@ -1,4 +1,4 @@
-module SimpleFixed2(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb, branch_taken);
+module SimpleFixed2(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb, branch_taken, rt_addr_delay, reg_write_delay);
 	input			clk, reset;
 
 	//RF/FWD Stage
@@ -17,13 +17,11 @@ module SimpleFixed2(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_
 
 	//Internal Signals
 	logic [3:0][0:127]	rt_delay;			//Staging register for calculated values
-	logic [3:0][0:6]	rt_addr_delay;		//Destination register for rt_wb
-	logic [3:0]			reg_write_delay;	//Will rt_wb write to RegTable
+	output logic [3:0][0:6]	rt_addr_delay;		//Destination register for rt_wb
+	output logic [3:0]		reg_write_delay;	//Will rt_wb write to RegTable
 
 	logic [6:0]			i;					//7-bit counter for loops
 	logic [0:127] tmp,s;
-
-	// TODO : Implement all instr
 
 	always_comb begin
 		rt_wb = rt_delay[3];

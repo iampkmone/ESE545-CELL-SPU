@@ -1,4 +1,5 @@
-module SinglePrecision(clk, reset, op, format, rt_addr, ra, rb, rc, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb, rt_int, rt_addr_int, reg_write_int, branch_taken);
+module SinglePrecision(clk, reset, op, format, rt_addr, ra, rb, rc, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb, rt_int, rt_addr_int, reg_write_int, branch_taken,
+	rt_addr_delay, reg_write_delay);
 	input			clk, reset;
 	
 	//RF/FWD Stage
@@ -21,8 +22,8 @@ module SinglePrecision(clk, reset, op, format, rt_addr, ra, rb, rc, imm, reg_wri
 	
 	//Internal Signals
 	logic [6:0][0:127]	rt_delay;			//Staging register for calculated values
-	logic [6:0][0:6]	rt_addr_delay;		//Destination register for rt_wb
-	logic [6:0]			reg_write_delay;	//Will rt_wb write to RegTable
+	output logic [6:0][0:6]	rt_addr_delay;		//Destination register for rt_wb
+	output logic [6:0]		reg_write_delay;	//Will rt_wb write to RegTable
 	logic [6:0]			int_delay;			//1 if int op, 0 if else
 	
 	always_comb begin
