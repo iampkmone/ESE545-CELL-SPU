@@ -46,6 +46,15 @@ stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_a
 	logic [0:127]		br1_out;		//Output value of br1 Stage 1
 	logic [0:6]			br1_addr_out;	//Destination register for rt_wb
 	logic				br1_write_out;	//Will rt_wb write to RegTable
+	
+	logic [5:0][0:6]	rt_addr_delay;		//Destination register for rt_wb
+	logic [5:0]			reg_write_delay;	//Will rt_wb write to RegTable
+	
+	logic [5:0][0:6]	rt_addr_delay_ls1;		//Destination register for rt_wb
+	logic [5:0]			reg_write_delay_ls1;	//Will rt_wb write to RegTable
+	
+	logic [3:0][0:6]	rt_addr_delay_p1;		//Destination register for rt_wb
+	logic [3:0]			reg_write_delay_p1;	//Will rt_wb write to RegTable
 
 
 	input logic [0:7] ra_odd_addr,rb_odd_addr;
@@ -53,15 +62,11 @@ stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_a
 	output logic stall_odd_raw,stall_even_raw;
 
 
-
-	// TODO : Support forwarding signals
-
 	Permute p1(.clk(clk), .reset(reset), .op(p1_op), .format(p1_format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .imm(imm), .reg_write(p1_reg_write), .rt_wb(p1_out),
-		.rt_addr_wb(p1_addr_out), .reg_write_wb(p1_write_out), .branch_taken(branch_taken), .stall_odd_raw(stall_odd_raw), .ra_odd_addr(ra_odd_addr), .rb_odd_addr(rb_odd_addr),
-		.stall_even_raw(stall_even_raw), .ra_even_addr(ra_even_addr), .rb_even_addr(rb_even_addr), .rc_even_addr(rc_even_addr));
+		.rt_addr_wb(p1_addr_out), .reg_write_wb(p1_write_out), .branch_taken(branch_taken), .rt_addr_delay(rt_addr_delay_p1), .reg_write_delay(reg_write_delay_p1));
 
 	LocalStore ls1(.clk(clk), .reset(reset), .op(ls1_op), .format(ls1_format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .rt_st(rt_st), .imm(imm), .reg_write(ls1_reg_write), .rt_wb(ls1_out),
-		.rt_addr_wb(ls1_addr_out), .reg_write_wb(ls1_write_out), .branch_taken(branch_taken));
+		.rt_addr_wb(ls1_addr_out), .reg_write_wb(ls1_write_out), .branch_taken(branch_taken), .rt_addr_delay(rt_addr_delay_ls1), .reg_write_delay(reg_write_delay_ls1));
 
 	Branch br1(.clk(clk), .reset(reset), .op(br1_op), .format(br1_format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .rt_st(rt_st), .imm(imm), .reg_write(br1_reg_write), .pc_in(pc_in), .rt_wb(br1_out),
 		.rt_addr_wb(br1_addr_out), .reg_write_wb(br1_write_out), .pc_wb(pc_wb), .branch_taken(branch_taken), .first(first), .branch_kill(branch_kill));
@@ -78,6 +83,41 @@ stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_a
 		br1_op = 0;
 		br1_format = 0;
 		br1_reg_write = 0;
+		
+		for (int i=0; i < 5; i++) begin
+			rt_addr_delay[i] = rt_addr_delay[i] | rt_addr_delay_ls1[i];
+			reg_write_delay[i] = rt_addr_delay[i] | reg_write_delay_ls1[i];
+		end
+		
+		for (int i=0; i < 3; i++) begin
+			rt_addr_delay[i] = rt_addr_delay[i] | rt_addr_delay_p1[i];
+			reg_write_delay[i] = rt_addr_delay[i] | reg_write_delay_p1[i];
+		end
+
+		for(int i=0;i<5;i++) begin
+			if(reg_write_delay[i] == 1 &&
+				(
+					(rt_addr_delay[i] == ra_odd_addr ) ||
+					(rt_addr_delay[i] == rb_odd_addr ) ||
+					(rt_addr_delay[i] == rc_even_addr )
+				)
+			) begin
+				stall_odd_raw = 1;
+				$display("%s %d RAW hazard found ",`__FILE__,`__LINE__);
+				$display("i=  %d addr rt_addr_delay %d ",i,rt_addr_delay[i]);
+			end
+			if(reg_write_delay[i] == 1 &&
+				(
+					(rt_addr_delay[i] == ra_even_addr ) ||
+					(rt_addr_delay[i] == rb_even_addr ) ||
+					(rt_addr_delay[i] == rc_even_addr )
+				)
+			) begin
+				stall_even_raw = 1;
+				$display("%s %d RAW hazard found ",`__FILE__,`__LINE__);
+				$display("i=  %d addr rt_addr_delay %d ",i,rt_addr_delay[i]);
+			end
+		end
 
 		case (unit)									//Mux to determine which unit will take the instr
 			2'b00 : begin							//Instr going to p1

@@ -5,7 +5,7 @@ module Pipes(clk, reset, instr_even, instr_odd, pc, pc_wb, branch_taken,
 		imm_even, imm_odd,
 		reg_write_even, reg_write_odd, first_odd,
 		stall_odd_raw, ra_odd_addr, rb_odd_addr,
-		stall_even_raw, ra_even_addr, rb_even_addr,rc_even_addr);
+		stall_even_raw, ra_even_addr, rb_even_addr,rc_even_addr, first_cyc);
 
 	input logic clk, reset;
 	input logic[0:31]	instr_even, instr_odd;				//Instr from decoder
@@ -20,11 +20,15 @@ module Pipes(clk, reset, instr_even, instr_odd, pc, pc_wb, branch_taken,
 	input logic [0:17]	imm_even, imm_odd;					//Full possible immediate value (used with format)
 	input logic			reg_write_even, reg_write_odd;		//1 if instr will write to rt, else 0
 	input				first_odd;								//1 if odd instr is first in pair, 0 else; Used for branch flushing
+	input				first_cyc;								//Due to how finished is detected, workaround is needed to prevent flag after reset
 
 	//Signals for writing back to RegTable
 	logic [0:127]	rt_even_wb, rt_odd_wb;					//Values to be written back to RegTable
 	logic [0:6]		rt_addr_even_wb, rt_addr_odd_wb;		//Destination register addresses
 	logic			reg_write_even_wb, reg_write_odd_wb;	//1 if instr will write to rt, else 0
+	
+	logic [0:6]		rt_addr_even_temp, rt_addr_odd_temp;		//Destination register addresses
+	logic			reg_write_even_temp, reg_write_odd_temp;	//1 if instr will write to rt, else 0
 
 	//Signals for forwarding logic
 	logic [6:0][0:127]	fw_even_wb, fw_odd_wb;				//Pipe shift registers of values ready to be forwarded
@@ -43,7 +47,7 @@ module Pipes(clk, reset, instr_even, instr_odd, pc, pc_wb, branch_taken,
 	input logic [0:7] ra_odd_addr, rb_odd_addr ;
 	input logic [0:7] ra_even_addr, rb_even_addr, rc_even_addr;
 	output logic stall_odd_raw,stall_even_raw;
-	logic stall_odd_raw1,stall_even_raw1,stall_odd_raw2,stall_even_raw2;
+	logic stall_odd_raw0, stall_even_raw0, stall_odd_raw1, stall_even_raw1, stall_odd_raw2, stall_even_raw2;
 
 	RegisterTable rf(.clk(clk), .reset(reset), .instr_even(instr_even), .instr_odd(instr_odd),
 		.ra_even(ra_even), .rb_even(rb_even), .rc_even(rc_even), .ra_odd(ra_odd), .rb_odd(rb_odd), .rt_st_odd(rt_st_odd), .rt_addr_even(rt_addr_even_wb),
@@ -76,8 +80,181 @@ module Pipes(clk, reset, instr_even, instr_odd, pc, pc_wb, branch_taken,
 			format_even_live = 0;
 			op_even_live = 0;
 		end
-
-		stall_even_raw =  stall_even_raw1|stall_even_raw2;
-		stall_odd_raw = stall_odd_raw1|stall_odd_raw2;
+		
+		/*$display("Reg Write Odd = %b ",reg_write_odd);
+		$display("rt_addr_odd = %d ",rt_addr_odd);
+		$display("rc_even_addr = %d ",rc_even_addr);
+		if (!first_cyc && !reset) begin 
+			if(reg_write_odd == 1 &&
+				(
+					(rt_addr_odd == ra_even_addr ) ||
+					(rt_addr_odd == rb_even_addr ) ||
+					(rt_addr_odd == rc_even_addr ) ||
+					(rt_addr_odd == ra_odd_addr ) ||
+					(rt_addr_odd == rb_odd_addr )
+				)
+			) begin
+				stall_odd_raw0 = 1;
+				$display("%s %d RAW hazard found ",`__FILE__,`__LINE__);
+				$display("Reg Write Odd = %b ",reg_write_odd);
+				$display("rt_addr_odd = %d ",rt_addr_odd);
+				$display("ra_even_addr = %d ",ra_even_addr);
+				$display("rb_even_addr = %d ",rb_even_addr);
+				$display("rc_even_addr = %d ",rc_even_addr);
+				$display("ra_odd_addr = %d ",ra_odd_addr);
+				$display("rb_odd_addr = %d ",rb_odd_addr);
+				$display("rt_addr_odd == ra_even_addr : %b", rt_addr_odd == ra_even_addr);
+				$display("rt_addr_odd == rb_even_addr : %b", rt_addr_odd == rb_even_addr);
+				$display("rt_addr_odd == rc_even_addr : %b", rt_addr_odd == rc_even_addr);
+				$display("rt_addr_odd == ra_odd_addr : %b", rt_addr_odd == ra_odd_addr);
+				$display("rt_addr_odd == rb_odd_addr : %b", rt_addr_odd == rb_odd_addr);
+			end
+			if(reg_write_even == 1 &&
+				(
+					(rt_addr_even == ra_even_addr ) ||
+					(rt_addr_even == rb_even_addr ) ||
+					(rt_addr_even == rc_even_addr) ||
+					(rt_addr_even == ra_odd_addr ) ||
+					(rt_addr_even == rb_odd_addr )
+				)
+			) begin
+				stall_even_raw0 = 1;
+				$display("%s %d RAW hazard found ",`__FILE__,`__LINE__);
+				$display("Reg Write Even = %b ",reg_write_even);
+				$display("rt_addr_even = %d ",rt_addr_even);
+				$display("ra_even_addr = %d ",ra_even_addr);
+				$display("rb_even_addr = %d ",rb_even_addr);
+				$display("rc_even_addr = %d ",rc_even_addr);
+				$display("ra_odd_addr = %d ",ra_odd_addr);
+				$display("rb_odd_addr = %d ",rb_odd_addr);
+			end
+			stall_even_raw =  stall_even_raw0 | stall_even_raw1 | stall_even_raw2;
+			stall_odd_raw = stall_odd_raw0 | stall_odd_raw1 | stall_odd_raw2;
+		end
+		else begin
+			stall_even_raw = 0;
+			stall_odd_raw = 0;
+		end*/
+		
+		/*$display("Reg Write Odd = %b ",reg_write_odd_temp);
+		$display("rt_addr_odd = %d ",rt_addr_odd_temp);
+		$display("rc_even_addr = %d ",rc_even_addr);
+		if (!first_cyc && !reset) begin 
+			if(reg_write_odd_temp == 1 &&
+				(
+					(rt_addr_odd_temp == ra_even_addr ) ||
+					(rt_addr_odd_temp == rb_even_addr ) ||
+					(rt_addr_odd_temp == rc_even_addr ) ||
+					(rt_addr_odd_temp == ra_odd_addr ) ||
+					(rt_addr_odd_temp == rb_odd_addr )
+				)
+			) begin
+				stall_odd_raw0 = 1;
+				$display("%s %d RAW hazard found ",`__FILE__,`__LINE__);
+				$display("Reg Write Odd = %b ",reg_write_odd_temp);
+				$display("rt_addr_odd = %d ",rt_addr_odd_temp);
+				$display("ra_even_addr = %d ",ra_even_addr);
+				$display("rb_even_addr = %d ",rb_even_addr);
+				$display("rc_even_addr = %d ",rc_even_addr);
+				$display("ra_odd_addr = %d ",ra_odd_addr);
+				$display("rb_odd_addr = %d ",rb_odd_addr);
+				$display("rt_addr_odd_temp == ra_even_addr : %b", rt_addr_odd_temp == ra_even_addr);
+				$display("rt_addr_odd_temp == rb_even_addr : %b", rt_addr_odd_temp == rb_even_addr);
+				$display("rt_addr_odd_temp == rc_even_addr : %b", rt_addr_odd_temp == rc_even_addr);
+				$display("rt_addr_odd_temp == ra_odd_addr : %b", rt_addr_odd_temp == ra_odd_addr);
+				$display("rt_addr_odd_temp == rb_odd_addr : %b", rt_addr_odd_temp == rb_odd_addr);
+			end
+			if(reg_write_even_temp == 1 &&
+				(
+					(rt_addr_even_temp == ra_even_addr ) ||
+					(rt_addr_even_temp == rb_even_addr ) ||
+					(rt_addr_even_temp == rc_even_addr) ||
+					(rt_addr_even_temp == ra_odd_addr ) ||
+					(rt_addr_even_temp == rb_odd_addr )
+				)
+			) begin
+				stall_even_raw0 = 1;
+				$display("%s %d RAW hazard found ",`__FILE__,`__LINE__);
+				$display("Reg Write Even = %b ",reg_write_even_temp);
+				$display("rt_addr_even = %d ",rt_addr_even_temp);
+				$display("ra_even_addr = %d ",ra_even_addr);
+				$display("rb_even_addr = %d ",rb_even_addr);
+				$display("rc_even_addr = %d ",rc_even_addr);
+				$display("ra_odd_addr = %d ",ra_odd_addr);
+				$display("rb_odd_addr = %d ",rb_odd_addr);
+			end
+			stall_even_raw =  stall_even_raw0 | stall_even_raw1 | stall_even_raw2;
+			stall_odd_raw = stall_odd_raw0 | stall_odd_raw1 | stall_odd_raw2;
+		end
+		else begin
+			stall_even_raw = 0;
+			stall_odd_raw = 0;
+		end*/
+		
+		if (!reset && !first_cyc) begin
+			stall_even_raw =  stall_even_raw1 | stall_even_raw2;
+			stall_odd_raw = stall_odd_raw1 | stall_odd_raw2;
+		end
+		else begin
+			stall_even_raw =  0;
+			stall_odd_raw = 0;
+		end
+	end
+	
+	always_ff @(posedge clk) begin
+		/*rt_addr_odd_temp <= reset ? 0 : rt_addr_odd;
+		rt_addr_even_temp <= reset ? 0 : rt_addr_even;
+		reg_write_odd_temp <= reset ? 0 : reg_write_odd;
+		reg_write_even_temp <= reset ? 0 : reg_write_even;
+		
+		$display("ff Reg Write Odd = %b ",reg_write_odd_temp);
+		$display("ff rt_addr_odd = %d ",rt_addr_odd_temp);
+		$display("ff rc_even_addr = %d ",rc_even_addr);*/
+		
+		/*if (!first_cyc && !reset) begin 
+			if(reg_write_odd == 1 &&
+				(
+					(rt_addr_odd == ra_even_addr ) ||
+					(rt_addr_odd == rb_even_addr ) ||
+					(rt_addr_odd == rc_even_addr ) ||
+					(rt_addr_odd == ra_odd_addr ) ||
+					(rt_addr_odd == rb_odd_addr )
+				)
+			) begin
+				stall_odd_raw0 <= 1;
+				$display("%s %d RAW hazard found ",`__FILE__,`__LINE__);
+				$display("Reg Write Odd = %b ",reg_write_odd);
+				$display("rt_addr_odd = %d ",rt_addr_odd);
+				$display("ra_even_addr = %d ",ra_even_addr);
+				$display("rb_even_addr = %d ",rb_even_addr);
+				$display("rc_even_addr = %d ",rc_even_addr);
+				$display("ra_odd_addr = %d ",ra_odd_addr);
+				$display("rb_odd_addr = %d ",rb_odd_addr);
+				$display("rt_addr_odd == ra_even_addr : %b", rt_addr_odd == ra_even_addr);
+				$display("rt_addr_odd == rb_even_addr : %b", rt_addr_odd == rb_even_addr);
+				$display("rt_addr_odd == rc_even_addr : %b", rt_addr_odd == rc_even_addr);
+				$display("rt_addr_odd == ra_odd_addr : %b", rt_addr_odd == ra_odd_addr);
+				$display("rt_addr_odd == rb_odd_addr : %b", rt_addr_odd == rb_odd_addr);
+			end
+			if(reg_write_even == 1 &&
+				(
+					(rt_addr_even == ra_even_addr ) ||
+					(rt_addr_even == rb_even_addr ) ||
+					(rt_addr_even == rc_even_addr) ||
+					(rt_addr_even == ra_odd_addr ) ||
+					(rt_addr_even == rb_odd_addr )
+				)
+			) begin
+				stall_even_raw0 <= 1;
+				$display("%s %d RAW hazard found ",`__FILE__,`__LINE__);
+				$display("Reg Write Even = %b ",reg_write_even);
+				$display("rt_addr_even = %d ",rt_addr_even);
+				$display("ra_even_addr = %d ",ra_even_addr);
+				$display("rb_even_addr = %d ",rb_even_addr);
+				$display("rc_even_addr = %d ",rc_even_addr);
+				$display("ra_odd_addr = %d ",ra_odd_addr);
+				$display("rb_odd_addr = %d ",rb_odd_addr);
+			end
+		end*/
 	end
 endmodule

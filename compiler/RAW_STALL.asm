@@ -6,3 +6,5 @@ shlqby 1 2 3
 shl 4 5 6
 shlqby 5 1 8
 shl 10 11 1
+mpy 17 19 11
+lqd 4 5(10)

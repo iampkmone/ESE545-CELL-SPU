@@ -1,5 +1,4 @@
-module SimpleFixed2(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb, branch_taken,
-stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_addr, rc_even_addr);
+module SimpleFixed2(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb, branch_taken, rt_addr_delay, reg_write_delay);
 	input			clk, reset;
 
 	//RF/FWD Stage
@@ -18,45 +17,17 @@ stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_a
 
 	//Internal Signals
 	logic [3:0][0:127]	rt_delay;			//Staging register for calculated values
-	logic [3:0][0:6]	rt_addr_delay;		//Destination register for rt_wb
-	logic [3:0]			reg_write_delay;	//Will rt_wb write to RegTable
-
-	input logic [0:7] ra_odd_addr,rb_odd_addr;
-	input logic [0:7] ra_even_addr,rb_even_addr,rc_even_addr;
-	output logic stall_odd_raw,stall_even_raw;
+	output logic [3:0][0:6]	rt_addr_delay;		//Destination register for rt_wb
+	output logic [3:0]			reg_write_delay;	//Will rt_wb write to RegTable
 
 
 	logic [6:0]			i;					//7-bit counter for loops
 	logic [0:127] tmp,s;
-	// TODO : Implement all instr
 
 	always_comb begin
 		rt_wb = rt_delay[3];
 		rt_addr_wb = rt_addr_delay[3];
 		reg_write_wb = reg_write_delay[3];
-
-		for(int i=0;i<3;i++) begin
-			$display("i=  %d addr rt_addr_delay %d ",i,rt_addr_delay[i]);
-			if(reg_write_delay[i] == 1 &&
-				(
-					(rt_addr_delay[i] == ra_odd_addr ) ||
-					(rt_addr_delay[i] == rb_odd_addr )
-				)
-			) begin
-				stall_odd_raw = 1;
-				$display("%s %d RAW hazard found ",`__FILE__,`__LINE__);
-			end
-			if(reg_write_delay[i] == 1 &&
-				(
-					(rt_addr_delay[i] == ra_even_addr ) ||
-					(rt_addr_delay[i] == rb_even_addr ) ||
-					(rt_addr_delay[i] == rc_even_addr )
-				)
-			) begin
-				stall_even_raw = 1;
-				$display("%s %d RAW hazard found ",`__FILE__,`__LINE__);
-			end
-		end
 	end
 
 	always_ff @(posedge clk) begin
