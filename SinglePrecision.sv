@@ -1,6 +1,7 @@
-module SinglePrecision(clk, reset, op, format, rt_addr, ra, rb, rc, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb, rt_int, rt_addr_int, reg_write_int, branch_taken);
+module SinglePrecision(clk, reset, op, format, rt_addr, ra, rb, rc, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb, rt_int, rt_addr_int, reg_write_int, branch_taken,
+stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_addr, rc_even_addr);
 	input			clk, reset;
-	
+
 	//RF/FWD Stage
 	input [0:10]	op;				//Decoded opcode, truncated based on format
 	input [2:0]		format;			//Format of instr, used with op and imm
@@ -9,22 +10,28 @@ module SinglePrecision(clk, reset, op, format, rt_addr, ra, rb, rc, imm, reg_wri
 	input [0:17]	imm;			//Immediate value, truncated based on format
 	input			reg_write;		//Will current instr write to RegTable
 	input			branch_taken;	//Was branch taken?
-	
+
 	//WB Stage
 	output logic [0:127]	rt_wb;			//Output value of Stage 6
 	output logic [0:6]		rt_addr_wb;		//Destination register for rt_wb
 	output logic			reg_write_wb;	//Will rt_wb write to RegTable
-	
+
 	output logic [0:127]	rt_int;			//Output value of Stage 7
 	output logic [0:6]		rt_addr_int;	//Destination register for rt_wb
 	output logic			reg_write_int;	//Will rt_wb write to RegTable
-	
+
 	//Internal Signals
 	logic [6:0][0:127]	rt_delay;			//Staging register for calculated values
 	logic [6:0][0:6]	rt_addr_delay;		//Destination register for rt_wb
 	logic [6:0]			reg_write_delay;	//Will rt_wb write to RegTable
 	logic [6:0]			int_delay;			//1 if int op, 0 if else
-	
+
+
+	input logic [0:7] ra_odd_addr,rb_odd_addr;
+	input logic [0:7] ra_even_addr,rb_even_addr,rc_even_addr;
+	output logic stall_odd_raw,stall_even_raw;
+
+
 	always_comb begin
 		if (int_delay[6] == 1) begin			//FP7 writeback (only for int ops)
 			rt_int = rt_delay[6];
@@ -36,7 +43,7 @@ module SinglePrecision(clk, reset, op, format, rt_addr, ra, rb, rc, imm, reg_wri
 			rt_addr_int = 0;
 			reg_write_int = 0;
 		end
-		
+
 		if (int_delay[5] == 0) begin			//FP6 writeback
 			rt_wb = rt_delay[5];
 			rt_addr_wb = rt_addr_delay[5];
@@ -47,13 +54,39 @@ module SinglePrecision(clk, reset, op, format, rt_addr, ra, rb, rc, imm, reg_wri
 			rt_addr_wb = 0;
 			reg_write_wb = 0;
 		end
+
+		// Need to run loop for 1 less number for the shorter pipe
+		for(int i=0;i<6;i++) begin
+
+			if(reg_write_delay[i] == 1 &&
+				(
+					(rt_addr_delay[i] == ra_odd_addr ) ||
+					(rt_addr_delay[i] == rb_odd_addr )
+				)
+			) begin
+				stall_odd_raw = 1;
+				$display("%s %d RAW hazard found ",`__FILE__,`__LINE__);
+				$display("i=  %d addr rt_addr_delay %d ",i,rt_addr_delay[i]);
+			end
+			if(reg_write_delay[i] == 1 &&
+				(
+					(rt_addr_delay[i] == ra_even_addr ) ||
+					(rt_addr_delay[i] == rb_even_addr ) ||
+					(rt_addr_delay[i] == rc_even_addr )
+				)
+			) begin
+				stall_even_raw = 1;
+				$display("%s %d RAW hazard found ",`__FILE__,`__LINE__);
+				$display("i=  %d addr rt_addr_delay %d ",i,rt_addr_delay[i]);
+			end
+		end
 	end
-	
+
 	always_ff @(posedge clk) begin
 		integer scale;
 		shortreal tempfp;
 		logic [0:15] temp16;
-		
+
 		if (reset == 1) begin
 			rt_delay[6] <= 0;
 			rt_addr_delay[6] <= 0;
@@ -77,7 +110,7 @@ module SinglePrecision(clk, reset, op, format, rt_addr, ra, rb, rc, imm, reg_wri
 				reg_write_delay[i+1] <= reg_write_delay[i];
 				int_delay[i+1] <= int_delay[i];
 			end
-			
+
 			if (format == 0 && op[0:9] == 0000000000) begin		//nop : No Operation (Execute)
 				rt_delay[0] <= 0;
 				rt_addr_delay[0] <= 0;

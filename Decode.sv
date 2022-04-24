@@ -5,7 +5,7 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 
 
 	logic [0:31]	instr_even, instr_odd,instr_odd_issue,instr_even_issue;					//Instr from decoder
-	
+
 	//Signals for handling branches
 	logic [7:0]			pc_wb;									//New program counter for branch
 	output logic [7:0]	stall_pc;
@@ -23,21 +23,31 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 	// logic [0:127]	ra_even, rb_even, rc_even, ra_odd, rb_odd, rt_st_odd;	//Register values from RegTable
 	logic [0:17]	imm_even, imm_odd;						//Full possible immediate value (used with format)
 	logic			reg_write_even, reg_write_odd;			//1 if instr will write to rt, else 0
-	
+
 	logic 			finished;								//Flag signalling end of program. System will not issue new instr when finished
 	logic			first_cyc;								//Due to how finished is detected, workaround is needed to prevent flag after reset
 
-typedef struct { 
-	logic [0:31]	instr_even, instr_odd;	
+
+
+	logic stall_odd_raw, stall_even_raw;
+
+	// logic [0:7]		ra_odd_addr,ra_even_addr, rb_odd_addr,rb_even_addr, rc_odd_addr,rc_even_addr;
+
+
+typedef struct {
+	logic [0:31]	instr_even, instr_odd;
 	logic [0:10]	op_even, op_odd;
 	logic			reg_write_even, reg_write_odd;
-	logic [0:17]	imm_even, imm_odd;	
-	logic [0:6]		rt_addr_even, rt_addr_odd;	
-	logic [1:0]		unit_even, unit_odd;	
+	logic [0:17]	imm_even, imm_odd;
+	logic [0:6]		rt_addr_even, rt_addr_odd;
+	logic [1:0]		unit_even, unit_odd;
 	logic [2:0]		format_even, format_odd;
+	logic [0:7]		ra_odd_addr,ra_even_addr, rb_odd_addr,rb_even_addr, rc_odd_addr,rc_even_addr;
 } op_codes;
 
 op_codes op;
+
+	logic [4:0] mask;
 
     Pipes pipe(.clk(clk), .reset(reset), .pc(pc),
 		.instr_even(instr_even), .instr_odd(instr_odd),
@@ -47,8 +57,10 @@ op_codes op;
         .rt_addr_even(rt_addr_even), .rt_addr_odd(rt_addr_odd),
         .format_even(format_even), .format_odd(format_odd),
         .imm_even(imm_even), .imm_odd(imm_odd),
-        .reg_write_even(reg_write_even), .reg_write_odd(reg_write_odd), .first_odd(first_odd_out)
-        );
+        .reg_write_even(reg_write_even), .reg_write_odd(reg_write_odd), .first_odd(first_odd_out),
+		.stall_odd_raw(stall_odd_raw), .ra_odd_addr(op.ra_odd_addr), .rb_odd_addr(op.rb_odd_addr),
+		.stall_even_raw(stall_even_raw), .ra_even_addr(op.ra_even_addr), .rb_even_addr(op.rb_even_addr),.rc_even_addr(op.rc_even_addr));
+
 
 
 	always_ff @( posedge clk ) begin : decode_op
@@ -77,11 +89,11 @@ op_codes op;
 		$display($time," Decode: unit_even %d unit_odd %d ",op.unit_even, op.unit_odd);
 		$display($time," Decode: format_even %d format_odd %d ",op.format_even, op.format_odd);
 		$display("================================================================");
-		
+
 		first_cyc <= reset;		//flag is always high after reset and low otherwise
 	end
-	
-	
+
+
 	//Decode logic (Note: Will be placed in decode/hazard unit in final submission)
     // always_ff @(posedge clk ) begin
 	always_comb begin
@@ -132,20 +144,31 @@ op_codes op;
 					// op.instr_odd = instr[0];
 					// op.instr_even = instr[1];
 					// check(instr_even,instr_odd);s
-				
+
 					// instr_even = 32'h0000;
 					// instr_odd = instr[1];
 					$display($time," Decode: Both are odd pipe");
 					op = check(32'h0000,instr[0]);
-					instr_even_issue = 32'h0000;
+					if(stall_odd_raw>0) begin
+						// RAW hazard, need to stall before we can push
+						op = check(32'h0000,32'h0000);
+						// doesn't matter which reg we use,
+						// We need to store our current fetch instruction
+						instr_even_issue = instr[0];
+						mask = 5'b10000;
+						$display($time, "%d  Decode: Resolving RAW mask %b",`__LINE__,mask);
+					end
+					else begin
+						instr_even_issue = 32'h0000;
+					end
 					instr_odd_issue = instr[1];
 
 
-					$display($time," Decode: no-op odd instruction needs update pc %d ", pc);
-					
+					$display($time,"%d Decode: no-op odd instruction needs update pc %d ", `__LINE__,pc);
+
 					stall_pc = pc;  // in this case we should increement pc with only one
 					stall = 1;
-					
+
 					first_odd = 0;				//Don't care but need val
 				end
 				else if(op.op_even!=0 && op.op_odd==0) begin													//Two even instr in pair
@@ -155,63 +178,318 @@ op_codes op;
 					// instr_even = instr[1];
 					// instr_odd = 32'h0000;
 					op = check(instr[0],32'h0000);
+					$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
+
+					if(stall_odd_raw>0) begin
+						// RAW hazard, need to stall before we can push
+						op = check(32'h0000,32'h0000);
+						// doesn't matter which reg we use,
+						// We need to store our current fetch instruction
+						instr_odd_issue = instr[0];
+						mask = 5'b01000;
+						$display($time, "Decode Raw Hazard stall mask %b pc %d ",mask,pc);
+						$display($time, "%d  Decode: Resolving RAW mask %b",`__LINE__,mask);
+
+					end
+					else begin
+						instr_odd_issue = 32'h0000;
+					end
 					instr_even_issue = instr[1];
-					instr_odd_issue = 32'h0000;
+
 
 					first_odd = 0;				//Don't care but need val
 					$display($time," Decode: Both instruction are even pipe %d ",pc);
 				end
 				else if(op.op_even==0 && op.op_odd==0) begin													//First instr odd, second even
+					op = check(instr[1],instr[0]);
 					if ((op.rt_addr_even != op.rt_addr_odd) || (op.reg_write_even != op.reg_write_odd)) begin
-						op = check(instr[1],instr[0]);
-						stall_pc = 0;
-						stall = 0;
-						first_odd = 1;				//Odd instr first, then even
-						$display($time," Decode : all good  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
-						
-						$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
-						$display($time," %b %b ",instr[0], instr[1]);
-						$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
-						if (instr[0] == 32'h0000 || instr[1] == 32'h0000)
-							finished = 1;			//Check for stop instr
+						$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
+
+						if(stall_odd_raw>0) begin
+							// odd is first instruction so we stall both
+							op = check(32'h0000,32'h0000);
+							stall = 1;
+							stall_pc = pc;
+							mask = 5'b00100;
+							instr_odd_issue=instr[0];
+							instr_even_issue=instr[1];
+							$display("Decode: stall both instruction because of RAW mask %b  %d ",mask,pc);
+							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
+
+
+						end
+						else if(stall_even_raw>0) begin
+							// Even instruction is 2nd instruction
+							// if that is stall we stall only 2nd instruction
+							op = check(32'h0000,instr[0]);
+							stall = 1;
+							stall_pc = pc;
+							mask = 5'b01100; // using same flag as even even pipe instruction stall
+							instr_odd_issue=32'h0000;
+							instr_even_issue=instr[0];
+							$display("Decode: stall 2nd instruction because of RAW mask %b %d ",mask,pc);
+							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
+
+						end
+						else begin
+							// If no hazard
+							stall_pc = 0;
+							stall = 0;
+							first_odd = 1;				//Odd instr first, then even
+							$display($time," Decode : all good  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
+							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
+
+							$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
+							$display($time," %b %b ",instr[0], instr[1]);
+							$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
+							if (instr[0] == 32'h0000 || instr[1] == 32'h0000)
+								finished = 1;			//Check for stop instr
+						end
 					end
 					else begin							//If rt_addr are same with both reg_wr enabled, with odd instr first
+						$display("rt_addr_even %d rt_addr_odd %d ",op.rt_addr_even,op.rt_addr_odd);
+						$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
+
 						stall = 1;
 						stall_pc = pc;
 						op = check(32'h0000,instr[0]);
-						instr_even_issue = instr[1];
-						instr_odd_issue = 32'h0000;
-						first_odd = 0;				//Don't care but need val
-						$display($time," Decode: Both instructions write to same destination register, issuing odd first %d ",pc);
+						if(stall_odd_raw>0) begin
+							// Stall both,
+							// one is stalled because of WAR
+							// other is because of RAW
+							op = check(32'h0000,32'h0000);
+							mask = 5'b00010;
+							instr_odd_issue = instr[0];
+							instr_even_issue = instr[1];
+							$display("rt_addr_even %d rt_addr_odd %d ",op.rt_addr_even,op.rt_addr_odd);
+							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
+
+							$display($time," Decode: Both instructions write to same destination register, and there is RAW with first issue stalling both mask %b %d ",mask,pc);
+						end
+						else begin
+							instr_even_issue = instr[1];
+							instr_odd_issue = 32'h0000;
+							first_odd = 0;				//Don't care but need val
+							$display("rt_addr_even %d rt_addr_odd %d ",op.rt_addr_even,op.rt_addr_odd);
+							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
+
+							$display($time," Decode: Both instructions write to same destination register, issuing odd first %d ",pc);
+						end
 					end
-				end		
+				end
 				else begin																						//First instr even, second odd
 					if ((op.rt_addr_even != op.rt_addr_odd) || (op.reg_write_even != op.reg_write_odd)) begin
-						stall_pc = 0;
-						stall = 0;
-						first_odd = 0;				//Even instr first, then odd
-						$display($time," Decode : all good  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
-						
-						$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
-						$display($time," %b %b ",instr[0], instr[1]);
-						$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
-						if (instr[0] == 32'h0000 || instr[1] == 32'h0000)
-							finished = 1;			//Check for stop instr
+						$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
+
+						if(stall_even_raw>0) begin
+							// Stall both ins because we found RAW in first instruction
+							instr_even_issue=instr[0];
+							instr_odd_issue=instr[1];
+							stall = 1;
+							stall_pc = pc;
+							mask = 5'b00110;
+							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
+
+							$display("Decode: Stall both because 1st instruction is stalled mask %b %d ",mask,pc);
+						end
+						else if(stall_odd_raw>0) begin
+							op = check(instr[0],32'h0000);
+							stall = 1;
+							stall_pc = pc;
+							mask = 5'b11000;
+							instr_odd_issue = instr[1];
+							instr_even_issue = 32'h0000;
+							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
+							$display("Decode: Stall 2nd instruction because of RAW hazard  mask %b %d ",mask,pc);
+						end
+						else begin
+							stall_pc = 	0;
+							stall = 0;
+							first_odd = 0;				//Even instr first, then odd
+							$display($time," Decode : all good  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
+							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
+
+							$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
+							$display($time," %b %b ",instr[0], instr[1]);
+							$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
+							if (instr[0] == 32'h0000 || instr[1] == 32'h0000)
+								finished = 1;			//Check for stop instr
+						end
+
 					end
 					else begin							//If rt_addr are same with both reg_wr enabled, with even instr first
+						$display("rt_addr_even %d rt_addr_odd %d ",op.rt_addr_even,op.rt_addr_odd);
 						stall = 1;
 						stall_pc = pc;
 						op = check(instr[0],32'h0000);
-						instr_even_issue = 32'h0000;
-						instr_odd_issue = instr[1];
-						first_odd = 0;				//Don't care but need val
-						$display($time," Decode: Both instructions write to same destination register, issuing even first %d ",pc);
+						if(stall_even_raw > 0 ) begin
+							op = check(32'h0000,32'h0000);
+							instr_even_issue = instr[0];
+							instr_odd_issue = instr[1];
+							mask = 5'b00001;
+							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
+
+						end
+						else begin
+							instr_even_issue = 32'h0000;
+							instr_odd_issue = instr[1];
+							mask = 5'b11000;
+							first_odd = 0;				//Don't care but need val
+							$display("rt_addr_even %d rt_addr_odd %d ",op.rt_addr_even,op.rt_addr_odd);
+							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
+
+							$display($time," Decode: Both instructions write to same destination register, issuing even first mask %d %d ",mask,pc);
+						end
+
 					end
 				end
 			end
-			else begin 				
+			else if (mask >0 ) begin
+				// check which mask as triggered
+				if(mask == 5'b11000) begin
+					op = check(32'h0000,instr_odd_issue);
+					if(stall_odd_raw==0) begin
+						stall =0;
+						mask = 0 ;
+					end
+					else begin
+						op = check(32'h0000,32'h0000);
+							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
+					end
+				end
+				else if(mask == 5'b01100) begin
+					op = check(instr_even_issue,32'h0000);
+					if(stall_even_raw==0) begin
+						stall = 0;
+						mask = 5'h00;
+							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
+					end
+					else begin
+						op = check(32'h0000,32'h0000);
+							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
+					end
+				end
+				else if(mask == 5'b10000) begin
+					// Processing the first instruction in pipe
+					op =  check(32'h0000,instr_even_issue);
+					if(stall_odd_raw == 0 ) begin
+						// we are good to execute
+						// RAW is resolved
+						mask = 5'b11000;
+						instr_even_issue = 32'h0000;
+						// if the other instruction has hazard
+						// we need to stall, this will be proceesed in
+						// else condition
+							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
+					end
+					else begin
+						op = check(32'h0000,32'h0000);
+							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
+					end
+				end
+				else if(mask == 5'b01000) begin
+					// Processing the first instruction in pipe
+					op =  check(instr_odd_issue,32'h0000);
+					if(stall_even_raw == 0 ) begin
+						// we are good to execute
+						// RAW is resolved
+						mask = 5'b01100;
+						instr_odd_issue = 32'h0000;
+						// if the other instruction has hazard
+						// we need to stall, this will be proceesed in
+						// else
+							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
+					end
+					else begin
+						op = check(32'h0000,32'h0000);
+							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
+					end
+				end
+				else if(mask == 5'b00100) begin
+					// Both instruction were stalled,
+					// even instruction is first
+					op =  check(instr_even_issue,instr_odd_issue);
+					if(stall_even_raw==0 && stall_odd_raw==0) begin
+						mask = 5'b00000;
+						stall = 0;// remove stall as we are good move forward
+
+						$display($time, "%d  Decode: Resolving RAW mask %b",`__LINE__,mask);
+					end
+					else if(stall_even_raw!=0 && stall_odd_raw==0 ) begin
+						// stall 2nd instruction
+						op =  check(32'h0000,instr_odd_issue);
+						mask = 5'b01100;
+						instr_odd_issue = 32'h0000;
+						$display($time," Decode: Stall even issue  instr[1] as RAW still exists %d ",pc);
+						$display($time, "%d  Decode: Resolving RAW mask %b",`__LINE__,mask);
+					end
+					else begin
+						// stall both
+						// no change in mask
+						op = check(32'h0000,32'h0000);
+						$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
+						$display($time," Decode: Stall both as RAW still exists %d ",pc);
+					end
+				end
+				else if(mask == 5'b00010) begin
+					op = check(32'h0000,instr_odd_issue);
+					// odd issue is first instruction
+					if(stall_odd_raw>0) begin
+						// continue to stall
+						op = check(32'h0000,32'h0000);
+
+						$display("Decode: Stall both as first instruction is stalled ");
+						$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
+					end
+					else begin
+						// RAW and WAR resolved
+						// Check for RAW in other instruction [even_instruction]
+						mask = 5'b01100;
+						$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
+					end
+				end
+				else if(mask == 5'b00110) begin
+					// Process RAW hazard
+					op = check(instr_even_issue,instr_odd_issue);
+
+					if(stall_even_raw==0 && stall_odd_raw==0) begin
+						op = check(instr_even_issue,instr_odd_issue);
+						mask = 5'b00000;
+						stall = 0;
+						$display($time, "%d  Decode: Resolving RAW mask %b",`__LINE__,mask);
+					end
+					else if(stall_even_raw ==0 && stall_odd_raw!=0) begin
+						op = check(instr_even_issue,32'h0000);
+						instr_even_issue=32'h0000;
+						mask = 5'b11000;
+						$display($time, "%d  Decode: Resolving RAW mask %b",`__LINE__,mask);
+					end
+					else begin
+						op = check(32'h0000,32'h0000);
+						// Continue to stall as even instruction [first insr] RAW exits;
+						$display("Decode: Stall continues as RAW still exists ");
+						$display($time, "%d  Decode: Resolving RAW mask %b",`__LINE__,mask);
+					end
+				end
+				else if(mask == 5'b00001) begin
+					//WAW hazard, pushing only ins[1]
+					op = check(instr_even_issue,32'h0000);
+					if(stall_even_raw==0) begin
+						// RAW hazard resolved
+						instr_even_issue=32'h0000;
+						mask =  5'b11000;
+						$display("Decode: RAW hazard resolved ");
+						$display($time, "%d  Decode: Resolving RAW mask %b",`__LINE__,mask);
+					end
+					else begin
+						op = check(32'h0000,32'h0000);
+						$display($time, "%d  Decode: Resolving RAW mask %b",`__LINE__,mask);
+					end
+				end
+			end else begin
 				if( stall==1) begin
 					op = check(instr_even_issue, instr_odd_issue);
+
 					$display($time," Decode : all good with stall  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
 					// pc_wb = stall_pc;
 				end
@@ -223,11 +501,10 @@ op_codes op;
 					$display($time," Decode: End of code");
 				end
 				stall =0;
-			end		
+			end
 
 		end
 		$display($time," Decode: pc %d  pc_wb %d stall %d stall_pc %d ",pc, pc_wb, stall, stall_pc );
-				
     end
 
 
@@ -241,6 +518,12 @@ op_codes op;
 															//Even decoding
 		check.reg_write_even = 1;
 		check.rt_addr_even = even[25:31];
+
+		check.rc_even_addr = even[25:31];
+		check.ra_even_addr = even[18:24];
+		check.rb_even_addr = even[11:17];
+
+
 		check.instr_even = even;
 		check.instr_odd = odd;
 		if (even == 0) begin							//alternate nop
@@ -603,6 +886,9 @@ op_codes op;
 
 															//odd decoding
 		check.rt_addr_odd = odd[25:31];
+		check.ra_odd_addr = odd[11:17];
+		check.rb_odd_addr = odd[18:24];
+
 		check.reg_write_odd = 1;
 		if (odd == 0) begin							//alternate lnop
 			check.format_odd = 0;
@@ -748,522 +1034,11 @@ op_codes op;
 				end
 			end
 		end
-	
-	
+
+
 		$display("check : op_even %h op_odd %h ", check.op_even, check.op_odd);
-		
+
 	endfunction
 
-
-    /*
-	always_comb begin
-															//Even decoding
-		reg_write_even = 1;
-		rt_addr_even = instr[25:31];
-		if (instr[0:31] == 32'h0000) begin							//alternate nop
-			format_even = 0;
-			check.op_even = 0;
-			unit_even = 0;
-			rt_addr_even = 0;
-			imm_even = 0;
-		end													//RRR-type
-		else if	(instr[0:3] == 4'b1100) begin			//mpya
-			format_even = 1;
-			check.op_even = 4'b1100;
-			unit_even = 0;
-			rt_addr_even = instr[4:10];
-		end
-		else if (instr[0:3] == 4'b1110) begin			//fma
-			format_even = 1;
-			check.op_even = 4'b1110;
-			unit_even = 0;
-			rt_addr_even = instr[4:10];
-		end
-		else if (instr[0:3] == 4'b1111) begin			//fms
-			format_even = 1;
-			check.op_even = 4'b1111;
-			unit_even = 0;
-			rt_addr_even = instr[4:10];
-		end													//RI18-type
-		else if (instr[0:6] == 7'b0100001) begin		//ila
-			format_even = 6;
-			check.op_even = 7'b0100001;
-			unit_even = 3;
-			imm_even = $signed(instr[7:24]);
-		end													//RI8-type
-		else if (instr[0:9] == 10'b0111011000) begin	//cflts
-			format_even = 3;
-			check.op_even = 10'b0111011000;
-			unit_even = 0;
-			imm_even = $signed(instr[10:17]);
-		end
-		else if (instr[0:9] == 10'b0111011001) begin	//cfltu
-			format_even = 3;
-			check.op_even = 10'b0111011001;
-			unit_even = 0;
-			imm_even = $signed(instr[10:17]);
-		end													//RI16-type
-		else if (instr[0:8] == 9'b010000011) begin		//ilh
-			format_even = 5;
-			check.op_even = 9'b010000011;
-			unit_even = 3;
-			imm_even = $signed(instr[9:24]);
-		end
-		else if (instr[0:8] == 9'b010000010) begin		//ilhu
-			format_even = 5;
-			check.op_even = 9'b010000010;
-			unit_even = 3;
-			imm_even = $signed(instr[9:24]);
-		end
-		else if (instr[0:8] == 9'b011000001) begin		//iohl
-			format_even = 5;
-			check.op_even = 9'b011000001;
-			unit_even = 3;
-			imm_even = $signed(instr[9:24]);
-		end
-		else begin
-			format_even = 4;				//RI10-type
-			imm_even = $signed(instr[8:17]);
-			case(instr[0:7])
-				8'b01110100 : begin			//mpyi
-					check.op_even = 8'b01110100;
-					unit_even = 0;
-				end
-				8'b01110101 : begin			//mpyui
-					check.op_even = 8'b01110101;
-					unit_even = 0;
-				end
-				8'b00011101 : begin			//ahi
-					check.op_even = 8'b00011101;
-					unit_even = 3;
-				end
-				8'b00011100 : begin			//ai
-					check.op_even = 8'b00011100;
-					unit_even = 3;
-				end
-				8'b00001101 : begin			//sfhi
-					check.op_even = 8'b00001101;
-					unit_even = 3;
-				end
-				8'b00001100 : begin			//sfi
-					check.op_even = 8'b00001100;
-					unit_even = 3;
-				end
-				8'b00010110 : begin			//andbi
-					check.op_even = 8'b00010110;
-					unit_even = 3;
-				end
-				8'b00010101 : begin			//andhi
-					check.op_even = 8'b00010101;
-					unit_even = 3;
-				end
-				8'b00010100 : begin			//andi
-					check.op_even = 8'b00010100;
-					unit_even = 3;
-				end
-				8'b00000110 : begin			//orbi
-					check.op_even = 8'b00000110;
-					unit_even = 3;
-				end
-				8'b00000101 : begin			//orhi
-					check.op_even = 8'b00000101;
-					unit_even = 3;
-				end
-				8'b00000100 : begin			//ori
-					check.op_even = 8'b00000100;
-					unit_even = 3;
-				end
-				8'b01000110 : begin			//xorbi
-					check.op_even = 8'b01000110;
-					unit_even = 3;
-				end
-				8'b01000101 : begin			//xorhi
-					check.op_even = 8'b01000101;
-					unit_even = 3;
-				end
-				8'b01000100 : begin			//xori
-					check.op_even = 8'b01000100;
-					unit_even = 3;
-				end
-				8'b01111110 : begin			//ceqbi
-					check.op_even = 8'b01111110;
-					unit_even = 3;
-				end
-				8'b01111101 : begin			//ceqhi
-					check.op_even = 8'b01111101;
-					unit_even = 3;
-				end
-				8'b01111100 : begin			//ceqi
-					check.op_even = 8'b01111100;
-					unit_even = 3;
-				end
-				8'b01001110 : begin			//cgtbi
-					check.op_even = 8'b01001110;
-					unit_even = 3;
-				end
-				8'b01001101 : begin			//cgthi
-					check.op_even = 8'b01001101;
-					unit_even = 3;
-				end
-				8'b01001100 : begin			//cgti
-					check.op_even = 8'b01001100;
-					unit_even = 3;
-				end
-				8'b01011110 : begin			//clgtbi
-					check.op_even = 8'b01011110;
-					unit_even = 3;
-				end
-				8'b01011101 : begin			//clgthi
-					check.op_even = 8'b01011101;
-					unit_even = 3;
-				end
-				8'b01011100 : begin			//clgti
-					check.op_even = 8'b01011100;
-					unit_even = 3;
-				end
-				default : format_even = 7;
-			endcase
-			if (format_even == 7) begin
-				format_even = 0;					//RR-type
-				case(instr[0:10])
-					11'b01111000100 : begin			//mpy
-						check.op_even = 11'b01111000100;
-						unit_even = 0;
-					end
-					11'b01111001100 : begin			//mpyu
-						check.op_even = 11'b01111001100;
-						unit_even = 0;
-					end
-					11'b01111000101 : begin			//mpyh
-						check.op_even = 11'b01111000101;
-						unit_even = 0;
-					end
-					11'b01011000100 : begin			//fa
-						check.op_even = 11'b01011000100;
-						unit_even = 0;
-					end
-					11'b01011000101 : begin			//fs
-						check.op_even = 11'b01011000101;
-						unit_even = 0;
-					end
-					11'b01011000110 : begin			//fm
-						check.op_even = 11'b01011000110;
-						unit_even = 0;
-					end
-					11'b01111000010 : begin			//fceq
-						check.op_even = 11'b01111000010;
-						unit_even = 0;
-					end
-					11'b01011000010 : begin			//fcgt
-						check.op_even = 11'b01011000010;
-						unit_even = 0;
-					end
-					11'b00001011111 : begin			//shlh
-						check.op_even = 11'b00001011111;
-						unit_even = 1;
-					end
-					11'b00001011011 : begin			//shl
-						check.op_even = 11'b00001011011;
-						unit_even = 1;
-					end
-					11'b00001011100 : begin			//roth
-						check.op_even = 11'b00001011100;
-						unit_even = 1;
-					end
-					11'b00001011000 : begin			//rot
-						check.op_even = 11'b00001011000;
-						unit_even = 1;
-					end
-					11'b00001011101 : begin			//rothm
-						check.op_even = 11'b00001011101;
-						unit_even = 1;
-					end
-					11'b00001011001 : begin			//rotm
-						check.op_even = 11'b00001011001;
-						unit_even = 1;
-					end
-					11'b00001011110 : begin			//rotmah
-						check.op_even = 11'b00001011110;
-						unit_even = 1;
-					end
-					11'b00001011010 : begin			//rotma
-						check.op_even = 11'b00001011010;
-						unit_even = 1;
-					end
-					11'b01010110100 : begin			//cntb
-						check.op_even = 11'b01010110100;
-						unit_even = 2;
-					end
-					11'b00011010011 : begin			//avgb
-						check.op_even = 11'b00011010011;
-						unit_even = 2;
-					end
-					11'b00001010011 : begin			//absdb
-						check.op_even = 11'b00001010011;
-						unit_even = 2;
-					end
-					11'b01001010011 : begin			//sumb
-						check.op_even = 11'b01001010011;
-						unit_even = 2;
-					end
-					11'b00011001000 : begin			//ah
-						check.op_even = 11'b00011001000;
-						unit_even = 3;
-					end
-					11'b00011000000 : begin			//a
-						check.op_even = 11'b00011000000;
-						unit_even = 3;
-					end
-					11'b00001001000 : begin			//sfh
-						check.op_even = 11'b00001001000;
-						unit_even = 3;
-					end
-					11'b00001000000 : begin			//sf
-						check.op_even = 11'b00001000000;
-						unit_even = 3;
-					end
-					11'b00011000001 : begin			//and
-						check.op_even = 11'b00011000001;
-						unit_even = 3;
-					end
-					11'b00001000001 : begin			//or
-						check.op_even = 11'b00001000001;
-						unit_even = 3;
-					end
-					11'b01001000001 : begin			//xor
-						check.op_even = 11'b01001000001;
-						unit_even = 3;
-					end
-					11'b00011001001 : begin			//nand
-						check.op_even = 11'b00011001001;
-						unit_even = 3;
-					end
-					11'b01111010000 : begin			//ceqb
-						check.op_even = 11'b01111010000;
-						unit_even = 3;
-					end
-					11'b01111001000 : begin			//ceqh
-						check.op_even = 11'b01111001000;
-						unit_even = 3;
-					end
-					11'b01111000000 : begin			//ceq
-						check.op_even = 11'b01111000000;
-						unit_even = 3;
-					end
-					11'b01001010000 : begin			//cgtb
-						check.op_even = 11'b01001010000;
-						unit_even = 3;
-					end
-					11'b01001001000 : begin			//cgth
-						check.op_even = 11'b01001001000;
-						unit_even = 3;
-					end
-					11'b01001000000 : begin			//cgt
-						check.op_even = 11'b01001000000;
-						unit_even = 3;
-					end
-					11'b01011010000 : begin			//clgtb
-						check.op_even = 11'b01011010000;
-						unit_even = 3;
-					end
-					11'b01011001000 : begin			//clgth
-						check.op_even = 11'b01011001000;
-						unit_even = 3;
-					end
-					11'b01011000000 : begin			//clgt
-						check.op_even = 11'b01011000000;
-						unit_even = 3;
-					end
-					11'b01000000001 : begin			//nop
-						check.op_even = 11'b01000000001;
-						unit_even = 0;
-						reg_write_even = 0;
-					end
-					default : format_even = 7;
-				endcase
-				if (format_even == 7) begin
-					format_even = 2;					//RI7-type
-					imm_even = $signed(instr[11:17]);
-					case(instr[0:10])
-						11'b00001111011 : begin			//shli
-							check.op_even = 11'b00001111011;
-							unit_even = 1;
-						end
-						11'b00001111100 : begin			//rothi
-							check.op_even = 11'b00001111100;
-							unit_even = 1;
-						end
-						11'b00001111000 : begin			//roti
-							check.op_even = 11'b00001111000;
-							unit_even = 1;
-						end
-						11'b00001111110 : begin			//rotmahi
-							check.op_even = 11'b00001111110;
-							unit_even = 1;
-						end
-						11'b00001111010 : begin			//rotmai
-							check.op_even = 11'b00001111010;
-							unit_even = 1;
-						end
-						default begin
-							format_even = 0;
-							check.op_even = 0;
-							unit_even = 0;
-							rt_addr_even = 0;
-							imm_even = 0;
-						end
-					endcase
-				end
-			end
-		end
-
-															//odd decoding
-		rt_addr_odd = instr[57:63];
-		reg_write_odd = 1;
-		if (instr[32:63] == 32'h0000) begin							//alternate lnop
-			format_odd = 0;
-			check.op_odd = 0;
-			unit_odd = 0;
-			rt_addr_odd = 0;
-			imm_odd = 0;
-		end													//RI10-type
-		else if (instr[32:39] == 8'b00110100) begin		//lqd
-			format_odd = 4;
-			check.op_odd = 8'b00110100;
-			unit_odd = 1;
-			imm_odd = $signed(instr[40:49]);
-		end
-		else if (instr[32:39] == 8'b00110100) begin		//stqd
-			format_odd = 4;
-			check.op_odd = 8'b00110100;
-			unit_odd = 1;
-			imm_odd = $signed(instr[40:49]);
-			reg_write_odd = 0;
-		end
-		else begin
-			format_odd = 5;					//RI16-type
-			imm_odd = $signed(instr[41:56]);
-			case(instr[32:40])
-				9'b001100001 : begin		//lqa
-					check.op_odd = 9'b001100001;
-					unit_odd = 1;
-				end
-				9'b001000001 : begin		//stqa
-					check.op_odd = 9'b001000001;
-					unit_odd = 1;
-					reg_write_odd = 0;
-				end
-				9'b001100100 : begin		//br
-					check.op_odd = 9'b001100100;
-					unit_odd = 2;
-					reg_write_odd = 0;
-				end
-				9'b001100000 : begin		//bra
-					check.op_odd = 9'b001100000;
-					unit_odd = 2;
-					reg_write_odd = 0;
-				end
-				9'b001100110 : begin		//brsl
-					check.op_odd = 9'b001100110;
-					unit_odd = 2;
-				end
-				9'b001000010 : begin		//brnz
-					check.op_odd = 9'b001000010;
-					unit_odd = 2;
-					reg_write_odd = 0;
-				end
-				9'b001000000 : begin		//brz
-					check.op_odd = 9'b001000000;
-					unit_odd = 2;
-					reg_write_odd = 0;
-				end
-				default : format_odd = 7;
-			endcase
-			if (format_odd == 7) begin
-				format_odd = 0;					//RR-type
-				case(instr[32:42])
-					11'b00111011011 : begin		//shlqbi
-						check.op_odd = 11'b00111011011;
-						unit_odd = 0;
-					end
-					11'b00111011111 : begin		//shlqby
-						check.op_odd = 11'b00111011111;
-						unit_odd = 0;
-					end
-					11'b00111011000 : begin		//rotqbi
-						check.op_odd = 11'b00111011000;
-						unit_odd = 0;
-					end
-					11'b00111011100 : begin		//rotqby
-						check.op_odd = 11'b00111011100;
-						unit_odd = 0;
-					end
-					11'b00110110010 : begin		//gbb
-						check.op_odd = 11'b00110110010;
-						unit_odd = 0;
-					end
-					11'b00110110001 : begin		//gbh
-						check.op_odd = 11'b00110110001;
-						unit_odd = 0;
-					end
-					11'b00110110000 : begin		//gb
-						check.op_odd = 11'b00110110000;
-						unit_odd = 0;
-					end
-					11'b00111000100 : begin		//lqx
-						check.op_odd = 11'b00111000100;
-						unit_odd = 1;
-					end
-					11'b00101000100 : begin		//stqx
-						check.op_odd = 11'b00101000100;
-						unit_odd = 1;
-						reg_write_odd = 0;
-					end
-					11'b00110101000 : begin		//bi
-						check.op_odd = 11'b00110101000;
-						unit_odd = 2;
-						reg_write_odd = 0;
-					end
-					11'b00000000001 : begin		//lnop
-						check.op_odd = 11'b00000000001;
-						unit_odd = 0;
-						reg_write_odd = 0;
-					end
-					default : format_odd = 7;
-				endcase
-				if (format_odd == 7) begin
-					format_odd = 2;					//RI7-type
-					imm_odd = $signed(instr[43:49]);
-					case(instr[32:42])
-						11'b00111111011 : begin		//shlqbii
-							check.op_odd = 11'b00111111011;
-							unit_odd = 0;
-						end
-						11'b00111111111 : begin		//shlqbyi
-							check.op_odd = 11'b00111111111;
-							unit_odd = 0;
-						end
-						11'b00111111000 : begin		//rotqbii
-							check.op_odd = 11'b00111111000;
-							unit_odd = 0;
-						end
-						11'b00111111100 : begin		//rotqbyi
-							check.op_odd = 11'b00111111100;
-							unit_odd = 0;
-						end
-						default begin
-							format_odd = 0;
-							check.op_odd = 0;
-							unit_odd = 0;
-							rt_addr_odd = 0;
-							imm_odd = 0;
-						end
-					endcase
-				end
-			end
-		end
-
-	end
-    */
 
 endmodule

@@ -1,4 +1,5 @@
-module Permute(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb, branch_taken);
+module Permute(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb,
+branch_taken, stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_addr, rc_even_addr);
 	input			clk, reset;
 
 	//RF/FWD Stage
@@ -22,6 +23,11 @@ module Permute(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, r
 
 	logic [6:0]			i;					//7-bit counter for loops
 
+	input logic [0:7] ra_odd_addr,rb_odd_addr;
+	input logic [0:7] ra_even_addr,rb_even_addr,rc_even_addr;
+	output logic stall_odd_raw,stall_even_raw;
+
+
 	// Temp variables
 	logic [0:127] tmp;
 
@@ -31,6 +37,37 @@ module Permute(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, r
 		rt_wb = rt_delay[3];
 		rt_addr_wb = rt_addr_delay[3];
 		reg_write_wb = reg_write_delay[3];
+		stall_odd_raw=0;
+
+		// check if the ra or rb of new instruction is clashing
+		// with the rt_add_wb
+		stall_odd_raw=0;
+		stall_even_raw=0;
+
+		for(int i=0;i<3;i++) begin
+			if(reg_write_delay[i] == 1 &&
+				(
+					(rt_addr_delay[i] == ra_odd_addr ) ||
+					(rt_addr_delay[i] == rb_odd_addr )
+				)
+			) begin
+				stall_odd_raw = 1;
+				$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr_delay[i]);
+				$display("i=  %d addr rt_addr_delay %d ",i,rt_addr_delay[i]);
+			end
+			if(reg_write_delay[i] == 1 &&
+				(
+					(rt_addr_delay[i] == ra_even_addr ) ||
+					(rt_addr_delay[i] == rb_even_addr ) ||
+					(rt_addr_delay[i] == rc_even_addr )
+				)
+			) begin
+				stall_even_raw = 1;
+				$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr_delay[i]);
+				$display("i=  %d addr rt_addr_delay %d ",i,rt_addr_delay[i]);
+			end
+		end
+
 	end
 
 	always_ff @(posedge clk) begin
