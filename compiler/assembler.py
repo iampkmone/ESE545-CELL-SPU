@@ -100,7 +100,7 @@ class Assembler:
 
             rt = self.fill(rt,7)
             ra = self.fill(ra,7)
-            imm7 = self.fill(imm7 & mask,7)
+            imm7 = self.fill(imm7,7)
             ins_binary = opcode+rt+ra+imm7
 
         elif format[0] == 3:
@@ -112,7 +112,7 @@ class Assembler:
             imm8 = bin(int(ins[3]) & mask).replace("0b","")
             rt = self.fill(rt,7)
             ra = self.fill(ra,7)
-            imm8 = self.fill(imm8 & mask,8)
+            imm8 = self.fill(imm8,8)
             ins_binary = opcode+rt+ra+imm8
 
 
@@ -158,11 +158,11 @@ class Assembler:
             # opcode rt,value
             # op[0-8]imm16[9-24]rt[25-31]
             mask = 0b111111111111111111
-            rt = bin(int(ins[1])).replace("0b","")
+            rt = bin(int(ins[1]) & mask).replace("0b","")
             rt = self.fill(rt,7)
 
-            imm18 = bin(int(ins[2])).replace("0b","")
-            imm18 = self.fill(imm18 & mask,18)
+            imm18 = bin(int(ins[2]) ).replace("0b","")
+            imm18 = self.fill(imm18 ,18)
             ins_binary = opcode+imm18+rt
         else:
             ins_binary = opcode + self.fill("",32-len(opcode))
