@@ -51,8 +51,8 @@ module OddPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rt_st, imm, reg_wr
 	output logic [6:0][0:6]	rt_addr_delay;			//Destination register for rt_wb
 	output logic [6:0]		reg_write_delay;		//Will rt_wb write to RegTable
 	
-	logic [6:0][0:6]	rt_addr_delay_ls1;		//Destination register for rt_wb
-	logic [6:0]			reg_write_delay_ls1;	//Will rt_wb write to RegTable
+	logic [5:0][0:6]	rt_addr_delay_ls1;		//Destination register for rt_wb
+	logic [5:0]			reg_write_delay_ls1;	//Will rt_wb write to RegTable
 	
 	logic [3:0][0:6]	rt_addr_delay_p1;		//Destination register for rt_wb
 	logic [3:0]			reg_write_delay_p1;	//Will rt_wb write to RegTable
