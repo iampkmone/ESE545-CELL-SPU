@@ -28,7 +28,7 @@ module IF(clk, reset, ins_cache, pc, read_enable);
             end
             else begin
                 // read_enable =0;
-                if(pc_wb-pc_check > 255) begin
+                /*if(pc_wb-pc_check > 255) begin
                     pc_check = pc_check + pc_wb;
                     read_enable =1;
                     $display($time,"IF: Prefetch pc_check %d pc_wb %d ", pc_check, pc_wb);
@@ -38,9 +38,8 @@ module IF(clk, reset, ins_cache, pc, read_enable);
                     read_enable =1;
                     $display($time,"IF: Prefetch  pc_check %d pc %d ", pc_check, pc);
                 end
-                else begin
+                else*/
                     read_enable = 0;
-                end
             end
 
             // if( (pc+2)%16 == 0) begin 
@@ -93,6 +92,8 @@ module IF(clk, reset, ins_cache, pc, read_enable);
                 
                 pc <= pc_wb; // Incase of stall we rely  on pc_wb to start fetch of new instruction
                 $display($time,"IF: pc update to pc_wb %d pc %d" ,pc_wb, pc);
+				//instr_d[0]<=ins_cache[pc-pc_check];
+                //instr_d[1]<=ins_cache[pc+1-pc_check];
                 instr_d[0]<= 32'h0000;//ins_cache[pc_wb-pc_check];
                 instr_d[1]<= 32'h0000;//ins_cache[pc_wb+1-pc_check];
                 

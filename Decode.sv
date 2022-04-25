@@ -11,6 +11,7 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 	output logic 		stall;
 	logic				branch_taken;							//Was branch taken?
 	logic				first_odd, first_odd_out;				//1 if odd instr is first in pair, 0 else; Used for branch flushing
+	logic			 	stall_var;
 
     input logic[7:0] pc;                           // PC for the current state
 
@@ -33,7 +34,7 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 	logic [7:0][0:6]	rt_addr_delay_even, rt_addr_delay_odd;		//Destination register for rt_wb
 	logic [7:0]			reg_write_delay_even, reg_write_delay_odd;	//Will rt_wb write to RegTable
 	logic 				stall_first_raw, stall_second_raw;			// 1 if respective signal is to be stalled due to RAW hazard
-	logic 				stall_first, stall_second;			// 1 if respective signal is to be stalled due to RAW or structural hazard
+	//logic 				stall_first, stall_second;			// 1 if respective signal is to be stalled due to RAW or structural hazard
 
 	typedef struct { 
 		logic [0:31]	instr_even, instr_odd;	
@@ -139,6 +140,8 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 			format_odd <= 0;
 		end
 		
+		
+		
 		/*instr_even <= op.instr_even;
 		instr_odd <= op.instr_odd;
 		op_even <= op.op_even;
@@ -172,7 +175,17 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 	
 	//Decode logic
 	always_comb begin
+		logic stall_first;
+		logic stall_second;
+		
+		stall_first = 0;
+		stall_second = 0;
 	
+		$display($time," New Decode: Sensitivity list");
+		$display("pc: %d, reset: %b, branch_taken: %b, finished: %b, stall: %b", pc, reset, branch_taken, finished, stall);
+		$display("instr_next[0]: %b, instr_next[1]: %b, ", instr_next[0], instr_next[1]);
+		$display("instr[0]:      %b, instr[1]:      %b", instr[0], instr[1]);
+		
 		if (reset == 1) begin
 			stall = 0;
 			stall_pc = 0;
@@ -204,20 +217,22 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 				//finished = 1;
 			end
 			else begin// if (stall == 0) begin
+				stall = stall;
 				
-				if (stall == 1) begin
-					instr_dec = instr_next;
+				/*if (stall == 1) begin
+					instr_dec[0] = instr_next[0];
+					instr_dec[1] = instr_next[1];
 					stall = 0;
 					$display($time," New Decode: Choosing queued instr");
 				end
-				else begin
-					instr_dec = instr;
+				else begin*/
+					instr_dec[0] = instr[0];
+					instr_dec[1] = instr[1];
 					$display($time," New Decode: Choosing new instr");
-				end
+				//end
 				
-				stall_first = 0;
-				stall_second = 0;
 				
+				//$display($time," New Decode: Do I make it this far?");
 				if ((instr_dec[0] != NOP) && (instr_dec[0] != LNOP) && (instr_dec[0] != 0)) begin
 					first = check_one(instr_dec[0]);	//Checking first instr
 					
