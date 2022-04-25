@@ -248,12 +248,15 @@ stall_state state;
 					$display($time," Decode: Both instruction are even pipe %d ",pc);
 				end
 				else if(op.op_even==0 && op.op_odd==0) begin													//First instr odd, second even
+					both_even=0;
+					both_odd=0;
 					op = check(instr[1],instr[0]);
 					if ((op.rt_addr_even != op.rt_addr_odd) || (op.reg_write_even != op.reg_write_odd)) begin
 						`debug2("");
 						stall_pc = 0;
 						stall = 0;
 						first_odd = 1;				//Odd instr first, then even
+
 						`debug2("");
 						$display($time," Decode : all good  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
 
@@ -275,6 +278,10 @@ stall_state state;
 					end
 				end
 				else begin																						//First instr even, second odd
+
+					both_even=0;
+					both_odd=0;
+
 					if ((op.rt_addr_even != op.rt_addr_odd) || (op.reg_write_even != op.reg_write_odd)) begin
 						`debug2("");
 						stall_pc = 0;
@@ -326,11 +333,16 @@ stall_state state;
 		end
 
 		`debug2("");
-		if(state.mask=='b11000) begin
+		if(state.mask==5'b11000) begin
 			`debug2("");
 			ra_even_addr=7'h00;
 			rb_even_addr=7'h00;
 			rc_even_addr=7'h00;
+		end
+		else if(state.mask == 5'b01000) begin
+			`debug2("");
+			ra_odd_addr=7'h00;
+			rb_odd_addr=7'h00;
 		end
 		else if(raw_hazard==0) begin
 			`debug2("");
@@ -361,7 +373,7 @@ stall_state state;
 		end
 		else begin
 			`debug2("");
-			if((both_even|both_odd)==0) begin
+			if( ((both_even|both_odd)==0)|| state.mask==5'hFF) begin
 				stall=0;
 				`debug2("");
 			end
@@ -376,23 +388,44 @@ stall_state state;
 			state.mask=5'h00;
 		end
 		else begin
+			$display("stall_odd_raw %b stall_even_raw %d state.mask %b",stall_odd_raw,stall_even_raw,state.mask);
+
 			if( (stall_odd_raw|stall_even_raw)>0 && state.mask==0) begin
 				`debug2("");
 				if(both_even==1) begin
 					state.final_op = check(32'h0000,32'h0000);
-					state.instr_odd_issue=instr_even_issue;
-					state.instr_even_issue=instr_even1_issue;
+					if(instr_even==instr_even1_issue) begin
+						state.instr_odd_issue=32'h0000;
+						state.instr_even_issue=instr_even_issue;
+						`debug2("stalling 2nd even instruction ");
+					end
+					else begin
+						state.instr_odd_issue=instr_even_issue;
+						state.instr_even_issue=instr_even1_issue;
+						`debug2("stall both even ins");
+					end
+
 					state.mask=5'b00100;
-					`debug2("stall both even ins");
 				end
-				if(both_odd==1) begin
+				else if(both_odd==1) begin
 					state.final_op  = check(32'h0000,32'h0000);
-					state.instr_odd_issue =  instr_odd1_issue;
-					state.instr_even_issue = instr_odd_issue;
+					if(instr_odd==instr_odd1_issue) begin
+						state.instr_odd_issue =  instr_odd_issue;
+						state.instr_even_issue = 32'h0000;
+						`debug2("stalling 2nd odd instruction");
+
+					end
+					else begin
+						state.instr_odd_issue =  instr_odd1_issue;
+						state.instr_even_issue = instr_odd_issue;
+						`debug2("No hazard for 1st odd ins");
+					end
 					state.mask=5'b00010;
-					`debug2("No hazard for 1st odd ins");
+
 				end
 				else begin
+					`debug2("else block");
+					$display("both_even %d both_odd %d first_odd ",both_even,both_odd,first_odd);
 					if(first_odd==1) begin
 						if(stall_odd_raw>0) begin
 							state.final_op = check(32'h0000,32'h0000);
@@ -417,18 +450,37 @@ stall_state state;
 					else begin
 						if(stall_even_raw>0) begin
 							state.final_op = check(32'h0000,32'h0000);
-							state.instr_odd_issue = instr[0];
-							state.instr_even_issue = instr[1];
+							if(both_even==1) begin
+								// 2nd even ins RAW hazard
+								state.instr_even_issue=instr_even_issue;
+								state.instr_odd_issue=32'h0000;
+								`debug2("2nd even ins store ");
+							end
+							else begin
+								state.instr_odd_issue = instr[0];
+								state.instr_even_issue = instr[1];
+								`debug2("stalling both ins");
+								$display("instr[0] %b instr[1] %d",instr[0],instr[1]);
+							end
 							state.mask =5'b10000;
-							`debug2("stalling both ins");
-							$display("instr[0] %b instr[1] %d",instr[0],instr[1]);
+
 						end
 						else if(stall_odd_raw>0) begin
 							state.final_op = check(instr[0],32'h0000);
-							state.instr_odd_issue= instr[1];
-							state.instr_even_issue=32'h0000;
+							if(both_odd==1) begin
+								//instr[0] should be zero because of the first stall
+								state.instr_even_issue=32'h0000;
+								state.instr_odd_issue=instr_odd_issue;
+								`debug2("2nd odd ins store");
+							end
+							else begin
+								state.instr_odd_issue= instr[1];
+								state.instr_even_issue=32'h0000;
+								`debug2("stalling 2nd ins");
+							end
+
 							state.mask = 5'b11000;
-							`debug2("stalling 2nd ins");
+
 						end
 						else begin
 							state.mask=5'b0000;
@@ -440,9 +492,9 @@ stall_state state;
 			end
 			else begin
 				`debug2("");
-				if((stall_odd_raw|stall_even_raw)==0 && state.mask>0) begin
+				if((stall_odd_raw|stall_even_raw)==0 && state.mask>0 && state.mask!=5'hFF) begin
 					`debug2("reset mask");
-					state.mask=5'h00;
+					state.mask=5'hFF;
 					state.final_op = check(raw_even_issue,raw_odd_issue);
 				end
 				else if(state.mask ==  5'b11000 || state.mask == 5'b01000) begin
@@ -458,7 +510,9 @@ stall_state state;
 			end
 		end
 
-
+		if(state.mask==5'hFF && stall==0) begin
+			state.mask = 0;
+		end
 	end
 
 	function stall_state check_for_hazard(input op_codes op);

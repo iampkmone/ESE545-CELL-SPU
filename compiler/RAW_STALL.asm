@@ -1,5 +1,9 @@
 mpy 17 19 11
 lqd 4 5(10)
+shlqby 1 5 8
+shlqby 1 5 17
+shl 4 5 6
+mpy 12 19 1
 shl 4 5 6
 shlqby 1 2 3
 ai 32 11 30
@@ -10,3 +14,7 @@ shl 80 11 5
 shlqby 5 1 8
 ai 33 16 31
 rotqbii 34 44 55
+rotqbii 80 17 4
+shlqby 1 5 8
+mpy 17 19 11
+lqd 4 5(10)
