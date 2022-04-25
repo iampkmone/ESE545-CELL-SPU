@@ -44,30 +44,36 @@ stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_a
 		rt_addr_wb = rt_addr_delay[1];
 		reg_write_wb = reg_write_delay[1];
 
-		for(int i=0;i<1;i++) begin
-
-			if(reg_write_delay[i] == 1 &&
-				(
-					(rt_addr_delay[i] == ra_odd_addr ) ||
-					(rt_addr_delay[i] == rb_odd_addr )
-				)
-			) begin
-				stall_odd_raw = 1;
-				$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr_delay[i]);
-				$display("i=  %d addr rt_addr_delay %d ",i,rt_addr_delay[i]);
-			end
-			if(reg_write_delay[i] == 1 &&
-				(
-					(rt_addr_delay[i] == ra_even_addr ) ||
-					(rt_addr_delay[i] == rb_even_addr ) ||
-					(rt_addr_delay[i] == rc_even_addr )
-				)
-			) begin
-				stall_even_raw = 1;
-				$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr_delay[i]);
-				$display("i=  %d addr rt_addr_delay %d ",i,rt_addr_delay[i]);
+		if(reset) begin
+			stall_even_raw = 0;
+			stall_odd_raw = 0;
+		end
+		else begin
+			for(int i=0;i<1;i++) begin
+				if(reg_write_delay[i] == 1 &&
+					(
+						(rt_addr_delay[i] == ra_odd_addr ) ||
+						(rt_addr_delay[i] == rb_odd_addr )
+					)
+				) begin
+					stall_odd_raw = 1;
+					$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr_delay[i]);
+					$display("i=  %d addr rt_addr_delay %d ",i,rt_addr_delay[i]);
+				end
+				if(reg_write_delay[i] == 1 &&
+					(
+						(rt_addr_delay[i] == ra_even_addr ) ||
+						(rt_addr_delay[i] == rb_even_addr ) ||
+						(rt_addr_delay[i] == rc_even_addr )
+					)
+				) begin
+					stall_even_raw = 1;
+					$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr_delay[i]);
+					$display("i=  %d addr rt_addr_delay %d ",i,rt_addr_delay[i]);
+				end
 			end
 		end
+
 
 	end
 

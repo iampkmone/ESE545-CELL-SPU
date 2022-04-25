@@ -99,10 +99,14 @@ stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_a
 		fx1_op = 0;
 		fx1_format = 0;
 		fx1_reg_write = 0;
-
-		stall_odd_raw =  stall_odd_raw1|stall_odd_raw2|stall_odd_raw3|stall_odd_raw4;
-		stall_even_raw = stall_even_raw1|stall_even_raw2|stall_even_raw3|stall_even_raw4;
-
+		if(reset==1) begin
+			stall_odd_raw=0;
+			stall_even_raw=0;
+		end
+		else begin
+			stall_odd_raw =  stall_odd_raw1|stall_odd_raw2|stall_odd_raw3|stall_odd_raw4;
+			stall_even_raw = stall_even_raw1|stall_even_raw2|stall_even_raw3|stall_even_raw4;
+		end
 		case (unit)									//Mux to determine which unit will take the instr
 			2'b00 : begin							//Instr going to fp1
 				fp1_op = op;

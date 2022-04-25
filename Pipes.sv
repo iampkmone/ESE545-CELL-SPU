@@ -76,8 +76,13 @@ module Pipes(clk, reset, instr_even, instr_odd, pc, pc_wb, branch_taken,
 			format_even_live = 0;
 			op_even_live = 0;
 		end
-
-		stall_even_raw =  stall_even_raw1|stall_even_raw2;
-		stall_odd_raw = stall_odd_raw1|stall_odd_raw2;
+		if(reset==1) begin
+			stall_odd_raw=0;
+			stall_even_raw=0;
+		end
+		else begin
+			stall_even_raw =  stall_even_raw1|stall_even_raw2;
+			stall_odd_raw = stall_odd_raw1|stall_odd_raw2;
+		end
 	end
 endmodule

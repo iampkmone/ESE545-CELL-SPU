@@ -41,31 +41,85 @@ branch_taken, stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_a
 
 		// check if the ra or rb of new instruction is clashing
 		// with the rt_add_wb
-		stall_odd_raw=0;
-		stall_even_raw=0;
+		if(reset==1) begin
+			stall_odd_raw=0;
+			stall_even_raw=0;
+		end
+		else begin
+			if(reg_write_delay[0] == 1 &&
+					(
+						(rt_addr_delay[0] == ra_odd_addr ) ||
+						(rt_addr_delay[0] == rb_odd_addr )
+					)
+				) begin
+					stall_odd_raw = 1;
+					$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr_delay[0]);
+					$display("i=  %d addr rt_addr_delay %d ",0,rt_addr_delay[0]);
+			end
+			else if(reg_write_delay[1] == 1 &&
+					(
+						(rt_addr_delay[1] == ra_odd_addr ) ||
+						(rt_addr_delay[1] == rb_odd_addr )
+					)
+				) begin
+					stall_odd_raw = 1;
+					$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr_delay[1]);
+					$display("i=  %d addr rt_addr_delay %d ",1,rt_addr_delay[1]);
+			end
+			else if(reg_write_delay[2] == 1 &&
+					(
+						(rt_addr_delay[2] == ra_odd_addr ) ||
+						(rt_addr_delay[2] == rb_odd_addr )
+					)
+				) begin
+					stall_odd_raw = 1;
+					$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr_delay[2]);
+					$display("i=  %d addr rt_addr_delay %d ",2,rt_addr_delay[2]);
+			end
+			else begin
+				stall_odd_raw=0;
+			end
 
-		for(int i=0;i<3;i++) begin
-			if(reg_write_delay[i] == 1 &&
-				(
-					(rt_addr_delay[i] == ra_odd_addr ) ||
-					(rt_addr_delay[i] == rb_odd_addr )
-				)
-			) begin
-				stall_odd_raw = 1;
-				$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr_delay[i]);
-				$display("i=  %d addr rt_addr_delay %d ",i,rt_addr_delay[i]);
+
+			if(reg_write_delay[0] == 1 &&
+					(
+						(rt_addr_delay[0] == ra_even_addr ) ||
+						(rt_addr_delay[0] == rb_even_addr ) ||
+						(rt_addr_delay[0] == rc_even_addr )
+					)
+				) begin
+					stall_even_raw = 1;
+					$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr_delay[0]);
+					$display("i=  %d addr rt_addr_delay %d ",0,rt_addr_delay[0]);
 			end
-			if(reg_write_delay[i] == 1 &&
-				(
-					(rt_addr_delay[i] == ra_even_addr ) ||
-					(rt_addr_delay[i] == rb_even_addr ) ||
-					(rt_addr_delay[i] == rc_even_addr )
-				)
-			) begin
-				stall_even_raw = 1;
-				$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr_delay[i]);
-				$display("i=  %d addr rt_addr_delay %d ",i,rt_addr_delay[i]);
+
+			else if(reg_write_delay[1] == 1 &&
+					(
+						(rt_addr_delay[1] == ra_even_addr ) ||
+						(rt_addr_delay[1] == rb_even_addr ) ||
+						(rt_addr_delay[1] == rc_even_addr )
+					)
+				) begin
+					stall_even_raw = 1;
+					$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr_delay[1]);
+					$display("i=  %d addr rt_addr_delay %d ",1,rt_addr_delay[1]);
 			end
+
+			else if(reg_write_delay[2] == 1 &&
+					(
+						(rt_addr_delay[2] == ra_even_addr ) ||
+						(rt_addr_delay[2] == rb_even_addr ) ||
+						(rt_addr_delay[2] == rc_even_addr )
+					)
+				) begin
+					stall_even_raw = 1;
+					$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr_delay[2]);
+					$display("i=  %d addr rt_addr_delay %d ",2,rt_addr_delay[2]);
+			end
+			else begin
+				stall_even_raw = 0;
+			end
+
 		end
 
 	end

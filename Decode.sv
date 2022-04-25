@@ -1,3 +1,6 @@
+`define debug2(MSG) \
+    $display(`"Decode >> %s, %0d: %s`", `__FILE__, `__LINE__, MSG)
+
 module Decode(clk, reset, instr, pc, stall_pc, stall);
     input logic			clk, reset;
     // input logic[0:63]    instr;                                  // From Instruction File (Fetch Stage)
@@ -31,8 +34,9 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 
 	logic stall_odd_raw, stall_even_raw;
 
-	// logic [0:7]		ra_odd_addr,ra_even_addr, rb_odd_addr,rb_even_addr, rc_odd_addr,rc_even_addr;
-
+	logic [0:7]		ra_odd_addr,ra_even_addr, rb_odd_addr,rb_even_addr, rc_odd_addr,rc_even_addr;
+	logic [0:31] raw_odd_issue,raw_even_issue;
+	logic raw_hazard;
 
 typedef struct {
 	logic [0:31]	instr_even, instr_odd;
@@ -44,10 +48,16 @@ typedef struct {
 	logic [2:0]		format_even, format_odd;
 	logic [0:7]		ra_odd_addr,ra_even_addr, rb_odd_addr,rb_even_addr, rc_odd_addr,rc_even_addr;
 } op_codes;
+op_codes op, tmp_op;
 
-op_codes op;
-
+typedef struct {
+	op_codes final_op;
 	logic [4:0] mask;
+	logic [0:31] instr_odd_issue,instr_even_issue;
+} stall_state;
+
+stall_state state;
+
 
     Pipes pipe(.clk(clk), .reset(reset), .pc(pc),
 		.instr_even(instr_even), .instr_odd(instr_odd),
@@ -58,46 +68,80 @@ op_codes op;
         .format_even(format_even), .format_odd(format_odd),
         .imm_even(imm_even), .imm_odd(imm_odd),
         .reg_write_even(reg_write_even), .reg_write_odd(reg_write_odd), .first_odd(first_odd_out),
-		.stall_odd_raw(stall_odd_raw), .ra_odd_addr(op.ra_odd_addr), .rb_odd_addr(op.rb_odd_addr),
-		.stall_even_raw(stall_even_raw), .ra_even_addr(op.ra_even_addr), .rb_even_addr(op.rb_even_addr),.rc_even_addr(op.rc_even_addr));
+		.stall_odd_raw(stall_odd_raw), .ra_odd_addr(ra_odd_addr), .rb_odd_addr(rb_odd_addr),
+		.stall_even_raw(stall_even_raw), .ra_even_addr(ra_even_addr), .rb_even_addr(rb_even_addr),.rc_even_addr(rc_even_addr));
 
 
 
 	always_ff @( posedge clk ) begin : decode_op
-		instr_even <= op.instr_even;
-		instr_odd <= op.instr_odd;
-		op_even <= op.op_even;
-		op_odd <= op.op_odd;
-		reg_write_even <= op.reg_write_even;
-		reg_write_odd <= op.reg_write_odd;
-		imm_even <= op.imm_even;
-		imm_odd <= op.imm_odd;
-		rt_addr_even <= op.rt_addr_even;
-		rt_addr_odd <= op.rt_addr_odd;
-		unit_even <= op.unit_even;
-		unit_odd <= op.unit_odd;
-		format_even <= op.format_even;
-		format_odd <= op.format_odd;
+		instr_even <= state.final_op.instr_even;
+		instr_odd <= state.final_op.instr_odd;
+		op_even <= state.final_op.op_even;
+		op_odd <= state.final_op.op_odd;
+		reg_write_even <= state.final_op.reg_write_even;
+		reg_write_odd <= state.final_op.reg_write_odd;
+		imm_even <= state.final_op.imm_even;
+		imm_odd <= state.final_op.imm_odd;
+		rt_addr_even <= state.final_op.rt_addr_even;
+		rt_addr_odd <= state.final_op.rt_addr_odd;
+		unit_even <= state.final_op.unit_even;
+		unit_odd <= state.final_op.unit_odd;
+		format_even <= state.final_op.format_even;
+		format_odd <= state.final_op.format_odd;
 		first_odd_out <= first_odd;
 		$display("================================================================");
 		$display($time," Decode: OP struct values ");
-		$display($time," Decode: instr_even %b instr_odd %b ",op.instr_even, op.instr_odd);
-		$display($time," Decode: op_even %b op_odd %b ",op.op_even, op.op_odd);
-		$display($time," Decode: reg_write_even %b reg_write_odd %b ",op.reg_write_even, op.reg_write_odd);
-		$display($time," Decode: imm_even %b imm_odd %b ",op.imm_even, op.imm_odd);
-		$display($time," Decode: rt_addr_even %b rt_addr_odd %b ",op.rt_addr_even, op.rt_addr_odd);
-		$display($time," Decode: unit_even %d unit_odd %d ",op.unit_even, op.unit_odd);
-		$display($time," Decode: format_even %d format_odd %d ",op.format_even, op.format_odd);
+		$display($time," Decode: instr_even %b instr_odd %b ",state.final_op.instr_even, state.final_op.instr_odd);
+		$display($time," Decode: op_even %b op_odd %b ",state.final_op.op_even, state.final_op.op_odd);
+		$display($time," Decode: reg_write_even %b reg_write_odd %b ",state.final_op.reg_write_even, state.final_op.reg_write_odd);
+		$display($time," Decode: imm_even %b imm_odd %b ",state.final_op.imm_even, state.final_op.imm_odd);
+		$display($time," Decode: rt_addr_even %b rt_addr_odd %b ",state.final_op.rt_addr_even, state.final_op.rt_addr_odd);
+		$display($time," Decode: unit_even %d unit_odd %d ",state.final_op.unit_even, state.final_op.unit_odd);
+		$display($time," Decode: format_even %d format_odd %d ",state.final_op.format_even, state.final_op.format_odd);
 		$display("================================================================");
 
 		first_cyc <= reset;		//flag is always high after reset and low otherwise
+
+		if(reset==1) begin
+			raw_odd_issue<=32'h0000;
+			raw_even_issue<=32'h0000;
+			raw_hazard<=0;
+		end
+		else begin
+
+			if(state.mask>0) begin
+				if(raw_hazard == 0 ) begin
+					raw_hazard<= 1;
+					`debug2("store ins");
+					raw_even_issue <=state.instr_even_issue;
+					raw_odd_issue <=state.instr_odd_issue;
+				end
+			end
+			else begin
+				raw_hazard<=0;
+				raw_even_issue <= 32'h0000;
+				raw_odd_issue <= 32'h0000;
+			end
+		end
+
+		$display("======================RAW HAZARD======================================");
+		$display("raw_hazard %b ",raw_hazard);
+		$display("state.mask %b ",state.mask);
+		$display("raw_odd_issue %b ",raw_odd_issue);
+		$display("raw_even_issue %b ",raw_even_issue);
+
+		$display("==================================================================");
+
+
 	end
 
 
 	//Decode logic (Note: Will be placed in decode/hazard unit in final submission)
     // always_ff @(posedge clk ) begin
 	always_comb begin
+		`debug2("");
 		$display($time," Decode: pc %d pc_wb %d stall %d  ins1 %b ins2 %b  ",pc ,pc_wb, stall, instr[0], instr[1]);
+		$display("stall %d %d ",stall_odd_raw,stall_even_raw);
 		if(reset == 1 ) begin
 			// pc_wb = 0;
 			// op.instr_even = 32'h0000;
@@ -129,7 +173,7 @@ op_codes op;
 				op = check(0, 0);
 				finished = 1;
 			end
-			else if(instr[0]!=32'h0000 && stall ==0) begin
+			else if(instr[0]!=32'h0000 && stall ==0 && (stall_even_raw|stall_odd_raw)==0) begin
 				// instr_even = instr[0];
 				// instr_odd = instr[1];s
 				op = check(instr[0],instr[1]);
@@ -147,24 +191,14 @@ op_codes op;
 
 					// instr_even = 32'h0000;
 					// instr_odd = instr[1];
+					`debug2("dbg");
 					$display($time," Decode: Both are odd pipe");
 					op = check(32'h0000,instr[0]);
-					if(stall_odd_raw>0) begin
-						// RAW hazard, need to stall before we can push
-						op = check(32'h0000,32'h0000);
-						// doesn't matter which reg we use,
-						// We need to store our current fetch instruction
-						instr_even_issue = instr[0];
-						mask = 5'b10000;
-						$display($time, "%d  Decode: Resolving RAW mask %b",`__LINE__,mask);
-					end
-					else begin
-						instr_even_issue = 32'h0000;
-					end
+					instr_even_issue = 32'h0000;
 					instr_odd_issue = instr[1];
+					`debug2("");
 
-
-					$display($time,"%d Decode: no-op odd instruction needs update pc %d ", `__LINE__,pc);
+					$display($time," Decode: no-op odd instruction needs update pc %d ", pc);
 
 					stall_pc = pc;  // in this case we should increement pc with only one
 					stall = 1;
@@ -173,339 +207,323 @@ op_codes op;
 				end
 				else if(op.op_even!=0 && op.op_odd==0) begin													//Two even instr in pair
 					// Both instruction are even pipe
+					`debug2("");
 					stall = 1;
 					stall_pc = pc; // in this case we should increement pc with only one
 					// instr_even = instr[1];
 					// instr_odd = 32'h0000;
 					op = check(instr[0],32'h0000);
-					$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
-
-					if(stall_odd_raw>0) begin
-						// RAW hazard, need to stall before we can push
-						op = check(32'h0000,32'h0000);
-						// doesn't matter which reg we use,
-						// We need to store our current fetch instruction
-						instr_odd_issue = instr[0];
-						mask = 5'b01000;
-						$display($time, "Decode Raw Hazard stall mask %b pc %d ",mask,pc);
-						$display($time, "%d  Decode: Resolving RAW mask %b",`__LINE__,mask);
-
-					end
-					else begin
-						instr_odd_issue = 32'h0000;
-					end
 					instr_even_issue = instr[1];
-
-
+					instr_odd_issue = 32'h0000;
+					`debug2("");
 					first_odd = 0;				//Don't care but need val
 					$display($time," Decode: Both instruction are even pipe %d ",pc);
 				end
 				else if(op.op_even==0 && op.op_odd==0) begin													//First instr odd, second even
 					op = check(instr[1],instr[0]);
 					if ((op.rt_addr_even != op.rt_addr_odd) || (op.reg_write_even != op.reg_write_odd)) begin
-						$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
+						`debug2("");
+						stall_pc = 0;
+						stall = 0;
+						first_odd = 1;				//Odd instr first, then even
+						`debug2("");
+						$display($time," Decode : all good  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
 
-						if(stall_odd_raw>0) begin
-							// odd is first instruction so we stall both
-							op = check(32'h0000,32'h0000);
-							stall = 1;
-							stall_pc = pc;
-							mask = 5'b00100;
-							instr_odd_issue=instr[0];
-							instr_even_issue=instr[1];
-							$display("Decode: stall both instruction because of RAW mask %b  %d ",mask,pc);
-							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
-
-
-						end
-						else if(stall_even_raw>0) begin
-							// Even instruction is 2nd instruction
-							// if that is stall we stall only 2nd instruction
-							op = check(32'h0000,instr[0]);
-							stall = 1;
-							stall_pc = pc;
-							mask = 5'b01100; // using same flag as even even pipe instruction stall
-							instr_odd_issue=32'h0000;
-							instr_even_issue=instr[0];
-							$display("Decode: stall 2nd instruction because of RAW mask %b %d ",mask,pc);
-							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
-
-						end
-						else begin
-							// If no hazard
-							stall_pc = 0;
-							stall = 0;
-							first_odd = 1;				//Odd instr first, then even
-							$display($time," Decode : all good  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
-							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
-
-							$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
-							$display($time," %b %b ",instr[0], instr[1]);
-							$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
-							if (instr[0] == 32'h0000 || instr[1] == 32'h0000)
-								finished = 1;			//Check for stop instr
-						end
+						$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
+						$display($time," %b %b ",instr[0], instr[1]);
+						$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
+						if (instr[0] == 32'h0000 || instr[1] == 32'h0000)
+							finished = 1;			//Check for stop instr
 					end
 					else begin							//If rt_addr are same with both reg_wr enabled, with odd instr first
-						$display("rt_addr_even %d rt_addr_odd %d ",op.rt_addr_even,op.rt_addr_odd);
-						$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
-
+						`debug2("");
 						stall = 1;
 						stall_pc = pc;
 						op = check(32'h0000,instr[0]);
-						if(stall_odd_raw>0) begin
-							// Stall both,
-							// one is stalled because of WAR
-							// other is because of RAW
-							op = check(32'h0000,32'h0000);
-							mask = 5'b00010;
-							instr_odd_issue = instr[0];
-							instr_even_issue = instr[1];
-							$display("rt_addr_even %d rt_addr_odd %d ",op.rt_addr_even,op.rt_addr_odd);
-							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
-
-							$display($time," Decode: Both instructions write to same destination register, and there is RAW with first issue stalling both mask %b %d ",mask,pc);
-						end
-						else begin
-							instr_even_issue = instr[1];
-							instr_odd_issue = 32'h0000;
-							first_odd = 0;				//Don't care but need val
-							$display("rt_addr_even %d rt_addr_odd %d ",op.rt_addr_even,op.rt_addr_odd);
-							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
-
-							$display($time," Decode: Both instructions write to same destination register, issuing odd first %d ",pc);
-						end
+						instr_even_issue = instr[1];
+						instr_odd_issue = 32'h0000;
+						first_odd = 0;				//Don't care but need val
+						$display($time," Decode: Both instructions write to same destination register, issuing odd first %d ",pc);
 					end
 				end
 				else begin																						//First instr even, second odd
 					if ((op.rt_addr_even != op.rt_addr_odd) || (op.reg_write_even != op.reg_write_odd)) begin
-						$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
+						`debug2("");
+						stall_pc = 0;
+						stall = 0;
+						first_odd = 0;				//Even instr first, then odd
+						`debug2(" ");
+						$display($time," Decode : all good  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
 
-						if(stall_even_raw>0) begin
-							// Stall both ins because we found RAW in first instruction
-							instr_even_issue=instr[0];
-							instr_odd_issue=instr[1];
-							stall = 1;
-							stall_pc = pc;
-							mask = 5'b00110;
-							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
-
-							$display("Decode: Stall both because 1st instruction is stalled mask %b %d ",mask,pc);
-						end
-						else if(stall_odd_raw>0) begin
-							op = check(instr[0],32'h0000);
-							stall = 1;
-							stall_pc = pc;
-							mask = 5'b11000;
-							instr_odd_issue = instr[1];
-							instr_even_issue = 32'h0000;
-							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
-							$display("Decode: Stall 2nd instruction because of RAW hazard  mask %b %d ",mask,pc);
-						end
-						else begin
-							stall_pc = 	0;
-							stall = 0;
-							first_odd = 0;				//Even instr first, then odd
-							$display($time," Decode : all good  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
-							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
-
-							$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
-							$display($time," %b %b ",instr[0], instr[1]);
-							$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
-							if (instr[0] == 32'h0000 || instr[1] == 32'h0000)
-								finished = 1;			//Check for stop instr
-						end
-
+						$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
+						$display($time," %b %b ",instr[0], instr[1]);
+						$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
+						if (instr[0] == 32'h0000 || instr[1] == 32'h0000)
+							finished = 1;			//Check for stop instr
 					end
 					else begin							//If rt_addr are same with both reg_wr enabled, with even instr first
-						$display("rt_addr_even %d rt_addr_odd %d ",op.rt_addr_even,op.rt_addr_odd);
+						`debug2("");
 						stall = 1;
 						stall_pc = pc;
 						op = check(instr[0],32'h0000);
-						if(stall_even_raw > 0 ) begin
-							op = check(32'h0000,32'h0000);
-							instr_even_issue = instr[0];
-							instr_odd_issue = instr[1];
-							mask = 5'b00001;
-							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
-
-						end
-						else begin
-							instr_even_issue = 32'h0000;
-							instr_odd_issue = instr[1];
-							mask = 5'b11000;
-							first_odd = 0;				//Don't care but need val
-							$display("rt_addr_even %d rt_addr_odd %d ",op.rt_addr_even,op.rt_addr_odd);
-							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
-
-							$display($time," Decode: Both instructions write to same destination register, issuing even first mask %d %d ",mask,pc);
-						end
-
+						instr_even_issue = 32'h0000;
+						instr_odd_issue = instr[1];
+						first_odd = 0;				//Don't care but need val
+						$display($time," Decode: Both instructions write to same destination register, issuing even first %d ",pc);
 					end
 				end
 			end
-			else if (mask >0 ) begin
-				// check which mask as triggered
-				if(mask == 5'b11000) begin
-					op = check(32'h0000,instr_odd_issue);
-					if(stall_odd_raw==0) begin
-						stall =0;
-						mask = 0 ;
-					end
-					else begin
-						op = check(32'h0000,32'h0000);
-							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
-					end
-				end
-				else if(mask == 5'b01100) begin
-					op = check(instr_even_issue,32'h0000);
-					if(stall_even_raw==0) begin
-						stall = 0;
-						mask = 5'h00;
-							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
-					end
-					else begin
-						op = check(32'h0000,32'h0000);
-							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
-					end
-				end
-				else if(mask == 5'b10000) begin
-					// Processing the first instruction in pipe
-					op =  check(32'h0000,instr_even_issue);
-					if(stall_odd_raw == 0 ) begin
-						// we are good to execute
-						// RAW is resolved
-						mask = 5'b11000;
-						instr_even_issue = 32'h0000;
-						// if the other instruction has hazard
-						// we need to stall, this will be proceesed in
-						// else condition
-							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
-					end
-					else begin
-						op = check(32'h0000,32'h0000);
-							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
-					end
-				end
-				else if(mask == 5'b01000) begin
-					// Processing the first instruction in pipe
-					op =  check(instr_odd_issue,32'h0000);
-					if(stall_even_raw == 0 ) begin
-						// we are good to execute
-						// RAW is resolved
-						mask = 5'b01100;
-						instr_odd_issue = 32'h0000;
-						// if the other instruction has hazard
-						// we need to stall, this will be proceesed in
-						// else
-							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
-					end
-					else begin
-						op = check(32'h0000,32'h0000);
-							$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
-					end
-				end
-				else if(mask == 5'b00100) begin
-					// Both instruction were stalled,
-					// even instruction is first
-					op =  check(instr_even_issue,instr_odd_issue);
-					if(stall_even_raw==0 && stall_odd_raw==0) begin
-						mask = 5'b00000;
-						stall = 0;// remove stall as we are good move forward
-
-						$display($time, "%d  Decode: Resolving RAW mask %b",`__LINE__,mask);
-					end
-					else if(stall_even_raw!=0 && stall_odd_raw==0 ) begin
-						// stall 2nd instruction
-						op =  check(32'h0000,instr_odd_issue);
-						mask = 5'b01100;
-						instr_odd_issue = 32'h0000;
-						$display($time," Decode: Stall even issue  instr[1] as RAW still exists %d ",pc);
-						$display($time, "%d  Decode: Resolving RAW mask %b",`__LINE__,mask);
-					end
-					else begin
-						// stall both
-						// no change in mask
-						op = check(32'h0000,32'h0000);
-						$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
-						$display($time," Decode: Stall both as RAW still exists %d ",pc);
-					end
-				end
-				else if(mask == 5'b00010) begin
-					op = check(32'h0000,instr_odd_issue);
-					// odd issue is first instruction
-					if(stall_odd_raw>0) begin
-						// continue to stall
-						op = check(32'h0000,32'h0000);
-
-						$display("Decode: Stall both as first instruction is stalled ");
-						$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
-					end
-					else begin
-						// RAW and WAR resolved
-						// Check for RAW in other instruction [even_instruction]
-						mask = 5'b01100;
-						$display($time, " %s %d  Decode: Resolving RAW mask %b",`__FILE__,`__LINE__,mask);
-					end
-				end
-				else if(mask == 5'b00110) begin
-					// Process RAW hazard
-					op = check(instr_even_issue,instr_odd_issue);
-
-					if(stall_even_raw==0 && stall_odd_raw==0) begin
-						op = check(instr_even_issue,instr_odd_issue);
-						mask = 5'b00000;
-						stall = 0;
-						$display($time, "%d  Decode: Resolving RAW mask %b",`__LINE__,mask);
-					end
-					else if(stall_even_raw ==0 && stall_odd_raw!=0) begin
-						op = check(instr_even_issue,32'h0000);
-						instr_even_issue=32'h0000;
-						mask = 5'b11000;
-						$display($time, "%d  Decode: Resolving RAW mask %b",`__LINE__,mask);
-					end
-					else begin
-						op = check(32'h0000,32'h0000);
-						// Continue to stall as even instruction [first insr] RAW exits;
-						$display("Decode: Stall continues as RAW still exists ");
-						$display($time, "%d  Decode: Resolving RAW mask %b",`__LINE__,mask);
-					end
-				end
-				else if(mask == 5'b00001) begin
-					//WAW hazard, pushing only ins[1]
-					op = check(instr_even_issue,32'h0000);
-					if(stall_even_raw==0) begin
-						// RAW hazard resolved
-						instr_even_issue=32'h0000;
-						mask =  5'b11000;
-						$display("Decode: RAW hazard resolved ");
-						$display($time, "%d  Decode: Resolving RAW mask %b",`__LINE__,mask);
-					end
-					else begin
-						op = check(32'h0000,32'h0000);
-						$display($time, "%d  Decode: Resolving RAW mask %b",`__LINE__,mask);
-					end
-				end
-			end else begin
-				if( stall==1) begin
+			else begin
+				if((stall_even_raw|stall_odd_raw)==0 && raw_hazard==0) begin
+					if(stall==1) begin
 					op = check(instr_even_issue, instr_odd_issue);
-
+					`debug2("");
 					$display($time," Decode : all good with stall  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
 					// pc_wb = stall_pc;
+					`debug2("");
+					end
+					else begin
+						// end of code
+						`debug2("");
+						op = check(instr[0],instr[1]);
+						if (!first_cyc)		//Workaround needed to prevent immediate program stop after reset
+							finished = 1;
+						$display($time," Decode: End of code");
+					end
+					stall =0;
 				end
-				else begin
-					// end of code
-					op = check(instr[0],instr[1]);
-					if (!first_cyc)		//Workaround needed to prevent immediate program stop after reset
-						finished = 1;
-					$display($time," Decode: End of code");
-				end
-				stall =0;
-			end
 
+			end
+			`debug2("");
+		end
+
+		`debug2("");
+		// if(state.mask==0) begin
+		// 	op = check(raw_even_issue,raw_odd_issue);
+		// 	`debug2("");
+		// end
+
+		if(state.mask=='b11000) begin
+			`debug2("");
+			ra_even_addr=7'h00;
+			rb_even_addr=7'h00;
+			rc_even_addr=7'h00;
+		end
+		else if(raw_hazard==0) begin
+			`debug2("");
+			ra_odd_addr=op.ra_odd_addr;
+			rb_odd_addr=op.rb_odd_addr;
+			ra_even_addr=op.ra_even_addr;
+			rb_even_addr=op.rb_even_addr;
+			rc_even_addr=op.rc_even_addr;
+			tmp_op =  op;
+		end
+		else begin
+			`debug2("");
+		end
+
+		// state = check_for_hazard(tmp_op);
+		$display("ra_odd_addr %d ",ra_odd_addr);
+		$display("rb_odd_addr %d ",rb_odd_addr);
+		$display("ra_even_addr %d ",ra_odd_addr);
+		$display("rb_even_addr %d ",rb_even_addr);
+		$display("rc_even_addr %d ",rc_even_addr);
+
+		`debug2("");
+
+		if( (stall_odd_raw|stall_even_raw)>0) begin
+			`debug2("");
+			stall=1;
+			stall_pc=pc;
+		end
+		else begin
+			`debug2("");
+			stall=0;
 		end
 		$display($time," Decode: pc %d  pc_wb %d stall %d stall_pc %d ",pc, pc_wb, stall, stall_pc );
     end
+
+	always_comb begin : RAW_HAZARD
+
+		`debug2("");
+		if(reset) begin
+			state.mask=5'h00;
+		end
+		else begin
+			if( (stall_odd_raw|stall_even_raw)>0 && state.mask==0) begin
+				`debug2("");
+					if(tmp_op.op_even!=0 && tmp_op.op_odd!=0) begin
+						if(first_odd==1) begin
+							if(stall_odd_raw>0) begin
+								state.final_op = check(32'h0000,32'h0000);
+								state.instr_odd_issue=instr_odd_issue;
+								state.instr_even_issue=instr_even_issue;
+								state.mask=5'b10000;
+								`debug2("stalling both ins");
+							end
+							else if(stall_even_raw>0) begin
+								state.final_op = check(32'h0000,instr[0]);
+								state.instr_odd_issue = 32'h0000;
+								state.instr_even_issue = op.instr_even;
+								state.mask = 5'b01000;
+								`debug2("stalling 2nd ins");
+							end
+							else begin
+								state.mask = 5'b00000;
+								`debug2("aligned ins dispacted");
+								state.final_op=tmp_op;
+							end
+						end
+						else begin
+							if(stall_even_raw>0) begin
+								state.final_op = check(32'h0000,32'h0000);
+								state.instr_odd_issue = instr[0];
+								state.instr_even_issue = instr[1];
+								state.mask =5'b10000;
+								`debug2("stalling both ins");
+								$display("instr[0] %b instr[1] %d",instr[0],instr[1]);
+							end
+							else if(stall_odd_raw>0) begin
+								state.final_op = check(instr[0],32'h0000);
+								state.instr_odd_issue= instr[1];
+								state.instr_even_issue=32'h0000;
+								state.mask = 5'b11000;
+								`debug2("stalling 2nd ins");
+							end
+							else begin
+								state.mask=5'b0000;
+								`debug2("aligned ins dispacted");
+								state.final_op=tmp_op;
+							end
+						end
+					end
+					else if(tmp_op.op_even==0 && tmp_op.op_odd!=0) begin
+						// it can be that both are odd
+						if(stall_odd_raw>0) begin
+							state.final_op=check(32'h0000,32'h0000);
+							state.instr_odd_issue = instr[0];
+							state.instr_even_issue=instr[1];
+							state.mask=5'b11100;
+							`debug2("both odd, with raw hazard");
+						end
+						else begin
+							state.mask=5'b11111;
+							state.final_op.instr_odd=op.instr_odd;
+							state.final_op.instr_even=op.instr_even;
+							state.instr_odd_issue=instr_odd_issue;
+							state.instr_even_issue=instr_even_issue;
+							`debug2("both odd no hazard ");
+						end
+					end
+					else if(tmp_op.op_even!=0 && tmp_op.op_odd==0) begin
+						// Both even ins
+						`debug2("Both even ins");
+						state.final_op=tmp_op;
+					end
+					else begin
+						//No-op Instructions
+						state.final_op=tmp_op;
+					end
+			end
+			else begin
+				`debug2("");
+				if((stall_odd_raw|stall_even_raw)==0 && state.mask>0) begin
+					`debug2("reset mask");
+					 state.mask=5'h00;
+
+					state.final_op = check(raw_even_issue,raw_odd_issue);
+				end
+				else if(state.mask ==  5'b11000 ) begin
+					`debug2("");
+					state.final_op=check(32'h0000,32'h0000);
+				end
+				else  begin
+					if(state.mask==0) begin
+						`debug2("");
+						state.final_op=op;
+					end
+				end
+			end
+		end
+
+
+	end
+
+	function stall_state check_for_hazard(input op_codes op);
+		`debug2("");
+		if(op.op_even!=0 && op.op_odd!=0) begin
+			if(first_odd==1) begin
+				if(stall_odd_raw>0) begin
+					stall=1;
+					check_for_hazard.final_op = check(32'h0000,32'h0000);
+					check_for_hazard.instr_odd_issue=instr[0];
+					check_for_hazard.instr_even_issue=instr[1];
+					check_for_hazard.mask=5'b10000;
+					`debug2("stalling both ins");
+				end
+				else if(stall_even_raw>0) begin
+					check_for_hazard.final_op = check(32'h0000,instr[0]);
+					check_for_hazard.instr_odd_issue = 32'h0000;
+					check_for_hazard.instr_even_issue = instr[1];
+					check_for_hazard.mask = 5'b01000;
+					`debug2("stalling 2nd ins");
+				end
+				else begin
+					check_for_hazard.mask = 5'b00000;
+					`debug2("aligned ins dispacted");
+					check_for_hazard.final_op=op;
+				end
+			end
+			else begin
+				if(stall_even_raw>0) begin
+					check_for_hazard.final_op = check(32'h0000,32'h0000);
+					check_for_hazard.instr_odd_issue = instr[0];
+					check_for_hazard.instr_even_issue = instr[1];
+					check_for_hazard.mask =5'b10000;
+					`debug2("stalling both ins");
+				end
+				else if(stall_odd_raw>0) begin
+					check_for_hazard.final_op = check(instr[0],32'h0000);
+					check_for_hazard.instr_odd_issue=instr[1];
+					check_for_hazard.instr_even_issue=32'h0000;
+					check_for_hazard.mask = 5'b11000;
+					`debug2("stalling 2nd ins");
+				end
+				else begin
+					check_for_hazard.mask=5'b0000;
+					`debug2("aligned ins dispacted");
+					check_for_hazard.final_op=op;
+				end
+			end
+		end
+		else if(op.op_even==0 && op.op_odd!=0) begin
+			// it can be that both are odd
+			if(stall_odd_raw>0) begin
+				check_for_hazard.final_op=check(32'h0000,32'h0000);
+				check_for_hazard.instr_odd_issue = instr[0];
+				check_for_hazard.instr_even_issue=instr[1];
+				check_for_hazard.mask=5'b11100;
+				`debug2("both odd, with raw hazard");
+			end
+			else begin
+				check_for_hazard.mask=5'b11111;
+				check_for_hazard.final_op.instr_odd=op.instr_odd;
+				check_for_hazard.final_op.instr_even=op.instr_even;
+				check_for_hazard.instr_odd_issue=instr_odd_issue;
+				check_for_hazard.instr_even_issue=instr_even_issue;
+				`debug2("both odd no hazard ");
+			end
+		end
+		else if(op.op_even!=0 && op.op_odd==0) begin
+			// Both even ins
+			`debug2("Both even ins");
+			check_for_hazard.final_op=op;
+		end
+		else begin
+			//No-op Instructions
+			check_for_hazard.final_op=op;
+		end
+	endfunction
 
 
 	function op_codes check (input logic[0:31] even,input logic[0:31] odd);
@@ -514,7 +532,8 @@ op_codes op;
 			check.op_even=0;
 			check.op_odd=0;
 		end
-		$display($time," even %b %b odd %b %bs",even, even[0:10], odd, odd[0:10]);
+		`debug2("");
+		$display($time," even %b %b odd %b %b",even, even[0:10], odd, odd[0:10]);
 															//Even decoding
 		check.reg_write_even = 1;
 		check.rt_addr_even = even[25:31];

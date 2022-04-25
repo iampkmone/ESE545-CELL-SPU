@@ -101,7 +101,7 @@ class Assembler:
             rt = self.fill(rt,7)
             ra = self.fill(ra,7)
             imm7 = self.fill(imm7 ,7)
-            ins_binary = opcode+rt+ra+imm7
+            ins_binary = opcode+imm7+ra+rt
 
         elif format[0] == 3:
             # opcode rt,ra,imm8
@@ -113,7 +113,7 @@ class Assembler:
             rt = self.fill(rt,7)
             ra = self.fill(ra,7)
             imm8 = self.fill(imm8,8)
-            ins_binary = opcode+rt+ra+imm8
+            ins_binary = opcode+imm8+ra+rt
 
 
         elif format[0] == 4:
