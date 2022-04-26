@@ -1,5 +1,5 @@
 module SinglePrecision(clk, reset, op, format, rt_addr, ra, rb, rc, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb, rt_int, rt_addr_int, reg_write_int, branch_taken,
-stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_addr, rc_even_addr);
+ rt_addr_delay, reg_write_delay);
 	input			clk, reset;
 
 	//RF/FWD Stage
@@ -22,15 +22,9 @@ stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_a
 
 	//Internal Signals
 	logic [6:0][0:127]	rt_delay;			//Staging register for calculated values
-	logic [6:0][0:6]	rt_addr_delay;		//Destination register for rt_wb
-	logic [6:0]			reg_write_delay;	//Will rt_wb write to RegTable
+	output logic [6:0][0:6]	rt_addr_delay;		//Destination register for rt_wb
+	output logic [6:0]			reg_write_delay;	//Will rt_wb write to RegTable
 	logic [6:0]			int_delay;			//1 if int op, 0 if else
-
-
-	input logic [0:7] ra_odd_addr,rb_odd_addr;
-	input logic [0:7] ra_even_addr,rb_even_addr,rc_even_addr;
-	output logic stall_odd_raw,stall_even_raw;
-	logic check_odd_raw,check_even_raw;
 
 
 	always_comb begin
@@ -55,60 +49,6 @@ stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_a
 			rt_addr_wb = 0;
 			reg_write_wb = 0;
 		end
-
-		if(reset) begin
-			stall_even_raw = 0;
-			stall_odd_raw = 0;
-			check_even_raw=0;
-			check_odd_raw=0;
-		end
-		else begin
-			check_even_raw=0;
-			check_odd_raw=0;
-
-			// Need to run loop for 1 less number for the shorter pipe
-			for(int i=0;i<6;i++) begin
-
-				if(reg_write_delay[i] == 1 &&
-					(
-						(rt_addr_delay[i] == ra_odd_addr ) ||
-						(rt_addr_delay[i] == rb_odd_addr )
-					)
-				) begin
-					check_odd_raw = 1;
-					$display("%s %d RAW hazard found ",`__FILE__,`__LINE__);
-					$display("i=  %d addr rt_addr_delay %d ",i,rt_addr_delay[i]);
-				end
-				if(reg_write_delay[i] == 1 &&
-					(
-						(rt_addr_delay[i] == ra_even_addr ) ||
-						(rt_addr_delay[i] == rb_even_addr ) ||
-						(rt_addr_delay[i] == rc_even_addr )
-					)
-				) begin
-					check_even_raw = 1;
-					$display("%s %d RAW hazard found ",`__FILE__,`__LINE__);
-					$display("i=  %d addr rt_addr_delay %d ",i,rt_addr_delay[i]);
-				end
-			end
-			if(check_odd_raw!=0) begin
-				stall_odd_raw=1;
-				$display("%s %d odd ins hazard ",`__FILE__,`__LINE__);
-			end
-			else begin
-				stall_odd_raw = 0;
-			end
-
-			if(check_even_raw!=0) begin
-				stall_even_raw =1 ;
-				$display("%s %d even ins hazard ",`__FILE__,`__LINE__);
-			end
-			else begin
-				stall_even_raw = 0;
-			end
-
-		end
-
 	end
 
 	always_ff @(posedge clk) begin
