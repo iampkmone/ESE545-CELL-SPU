@@ -106,6 +106,22 @@ stall_state state;
 			raw_odd_issue<=32'h0000;
 			raw_even_issue<=32'h0000;
 			raw_hazard<=0;
+			
+			instr_even <= 0;
+			instr_odd <= 0;
+			op_even <= 0;
+			op_odd <= 0;
+			reg_write_even <= 0;
+			reg_write_odd <= 0;
+			imm_even <= 0;
+			imm_odd <= 0;
+			rt_addr_even <= 0;
+			rt_addr_odd <= 0;
+			unit_even <= 0;
+			unit_odd <= 0;
+			format_even <= 0;
+			format_odd <= 0;
+			first_odd_out <= 0;
 		end
 		else begin
 
