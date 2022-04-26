@@ -376,7 +376,7 @@ stall_state state;
 		// raw_hazard==1 is added because
 		// change in ra_even triggered no-op on push from 2nd comb block which should happend only after we have processed first set of ins
 
-		if(raw_hazard==1 && state.mask==5'b11000) begin
+		if( state.mask==5'b11000) begin
 			`debug2("");
 			ra_even_addr=7'h00;
 			rb_even_addr=7'h00;
@@ -385,7 +385,7 @@ stall_state state;
 			is_rb_even_valid=0;
 			is_rc_even_valid=0;
 		end
-		else if(raw_hazard==1 && state.mask == 5'b01000) begin
+		else if(state.mask == 5'b01000) begin
 			`debug2("");
 			ra_odd_addr=7'h00;
 			rb_odd_addr=7'h00;

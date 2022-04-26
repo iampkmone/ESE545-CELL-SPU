@@ -54,45 +54,59 @@ is_ra_odd_valid,is_rb_odd_valid,is_rc_odd_valid, is_ra_even_valid,is_rb_even_val
 	logic [0:6]			fx1_addr_out;	//Destination register for rt_wb
 	logic				fx1_write_out;	//Will rt_wb write to RegTable
 
-	logic [6:0][0:6]	rt_addr_delay;		//Destination register for rt_wb
-	logic [6:0]			reg_write_delay;	//Will rt_wb write to RegTable
-
-	logic [6:0][0:6]	rt_addr_delay_fp1;		//Destination register for rt_wb
-	logic [6:0]			reg_write_delay_fp1;	//Will rt_wb write to RegTable
-
-	logic [3:0][0:6]	rt_addr_delay_fx2;		//Destination register for rt_wb
-	logic [3:0]			reg_write_delay_fx2;	//Will rt_wb write to RegTable
-
-	logic [3:0][0:6]	rt_addr_delay_b1;		//Destination register for rt_wb
-	logic [3:0]			reg_write_delay_b1;		//Will rt_wb write to RegTable
-
-	logic [1:0][0:6]	rt_addr_delay_fx1;		//Destination register for rt_wb
-	logic [1:0]			reg_write_delay_fx1;	//Will rt_wb write to RegTable
-
-	input logic [0:7] ra_odd_addr, rb_odd_addr, rc_odd_addr;
+	input logic [0:7] ra_odd_addr,rb_odd_addr,rc_odd_addr;
 	input logic [0:7] ra_even_addr,rb_even_addr,rc_even_addr;
 	output logic stall_odd_raw,stall_even_raw;
-
+	logic stall_odd_raw1,stall_even_raw1,stall_odd_raw2,stall_even_raw2,stall_odd_raw3,stall_even_raw3,stall_odd_raw4,stall_even_raw4;
 	input logic is_ra_odd_valid,is_rb_odd_valid,is_rc_odd_valid, is_ra_even_valid,is_rb_even_valid,is_rc_even_valid;
-	logic check_odd_raw,check_even_raw;
 
+	// TODO : Support forwarding signals
 
 	SinglePrecision fp1(.clk(clk), .reset(reset), .op(fp1_op), .format(fp1_format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .rc(rc), .imm(imm), .reg_write(fp1_reg_write),
 		.rt_wb(fp1_out), .rt_addr_wb(fp1_addr_out), .reg_write_wb(fp1_write_out), .rt_int(fp1_int), .rt_addr_int(fp1_addr_int), .reg_write_int(fp1_write_int),
-		.branch_taken(branch_taken), .rt_addr_delay(rt_addr_delay_fp1), .reg_write_delay(reg_write_delay_fp1));
+		.branch_taken(branch_taken),.stall_odd_raw(stall_odd_raw1), .ra_odd_addr(ra_odd_addr), .rb_odd_addr(rb_odd_addr), .rc_odd_addr(rc_odd_addr),
+		.stall_even_raw(stall_even_raw1), .ra_even_addr(ra_even_addr), .rb_even_addr(rb_even_addr), .rc_even_addr(rc_even_addr),
+			.is_ra_odd_valid(is_ra_odd_valid),.is_rb_odd_valid(is_rb_odd_valid),.is_rc_odd_valid(is_rc_odd_valid), .is_ra_even_valid(is_ra_even_valid),
+		.is_rb_even_valid(is_rb_even_valid),.is_rc_even_valid(is_rc_even_valid));
+
 
 	SimpleFixed2 fx2(.clk(clk), .reset(reset), .op(fx2_op), .format(fx2_format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .imm(imm), .reg_write(fx2_reg_write), .rt_wb(fx2_out),
 		.rt_addr_wb(fx2_addr_out), .reg_write_wb(fx2_write_out), .branch_taken(branch_taken),
-		.rt_addr_delay(rt_addr_delay_fx2), .reg_write_delay(reg_write_delay_fx2));
+		.stall_odd_raw(stall_odd_raw2), .ra_odd_addr(ra_odd_addr), .rb_odd_addr(rb_odd_addr), .rc_odd_addr(rc_odd_addr),
+		.stall_even_raw(stall_even_raw2), .ra_even_addr(ra_even_addr), .rb_even_addr(rb_even_addr), .rc_even_addr(rc_even_addr),
+			.is_ra_odd_valid(is_ra_odd_valid),.is_rb_odd_valid(is_rb_odd_valid),.is_rc_odd_valid(is_rc_odd_valid), .is_ra_even_valid(is_ra_even_valid),
+		.is_rb_even_valid(is_rb_even_valid),.is_rc_even_valid(is_rc_even_valid));
+
 
 	Byte b1(.clk(clk), .reset(reset), .op(b1_op), .format(b1_format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .imm(imm), .reg_write(b1_reg_write), .rt_wb(b1_out),
 		.rt_addr_wb(b1_addr_out), .reg_write_wb(b1_write_out), .branch_taken(branch_taken),
-		.rt_addr_delay(rt_addr_delay_b1), .reg_write_delay(reg_write_delay_b1));
+		.stall_odd_raw(stall_odd_raw3), .ra_odd_addr(ra_odd_addr), .rb_odd_addr(rb_odd_addr), .rc_odd_addr(rc_odd_addr),
+		.stall_even_raw(stall_even_raw3), .ra_even_addr(ra_even_addr), .rb_even_addr(rb_even_addr), .rc_even_addr(rc_even_addr),
+			.is_ra_odd_valid(is_ra_odd_valid),.is_rb_odd_valid(is_rb_odd_valid),.is_rc_odd_valid(is_rc_odd_valid), .is_ra_even_valid(is_ra_even_valid),
+		.is_rb_even_valid(is_rb_even_valid),.is_rc_even_valid(is_rc_even_valid));
 
 	SimpleFixed1 fx1(.clk(clk), .reset(reset), .op(fx1_op), .format(fx1_format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .rt_st(rc), .imm(imm), .reg_write(fx1_reg_write), .rt_wb(fx1_out),
 		.rt_addr_wb(fx1_addr_out), .reg_write_wb(fx1_write_out), .branch_taken(branch_taken),
-		.rt_addr_delay(rt_addr_delay_fx1), .reg_write_delay(reg_write_delay_fx1));
+		.stall_odd_raw(stall_odd_raw4), .ra_odd_addr(ra_odd_addr), .rb_odd_addr(rb_odd_addr), .rc_odd_addr(rc_odd_addr),
+		.stall_even_raw(stall_even_raw4), .ra_even_addr(ra_even_addr), .rb_even_addr(rb_even_addr), .rc_even_addr(rc_even_addr),
+		.is_ra_odd_valid(is_ra_odd_valid),.is_rb_odd_valid(is_rb_odd_valid),.is_rc_odd_valid(is_rc_odd_valid), .is_ra_even_valid(is_ra_even_valid),
+		.is_rb_even_valid(is_rb_even_valid),.is_rc_even_valid(is_rc_even_valid));
 
+
+	always_comb begin : raw
+		if(reset==1) begin
+			stall_odd_raw=0;
+			stall_even_raw=0;
+		end
+		else begin
+			stall_odd_raw =  stall_odd_raw1|stall_odd_raw2|stall_odd_raw3|stall_odd_raw4;
+			stall_even_raw = stall_even_raw1|stall_even_raw2|stall_even_raw3|stall_even_raw4;
+		end
+		$display("%s stall_even_raw %d stall_odd_raw %d",`__FILE__,stall_even_raw, stall_odd_raw);
+		$display("%s stall_even_raw %d stall_odd_raw %d",`__FILE__,stall_even_raw, stall_odd_raw);
+		$display("%s stall_even_raw %d stall_odd_raw %d",`__FILE__,stall_even_raw, stall_odd_raw);
+		$display("%s stall_even_raw %d stall_odd_raw %d",`__FILE__,stall_even_raw, stall_odd_raw);
+	end
 
 	always_comb begin
 		fp1_op = 0;
@@ -110,100 +124,6 @@ is_ra_odd_valid,is_rb_odd_valid,is_rc_odd_valid, is_ra_even_valid,is_rb_even_val
 		fx1_op = 0;
 		fx1_format = 0;
 		fx1_reg_write = 0;
-
-
-
-
-		if(reset==1) begin
-			stall_odd_raw=1;
-			stall_even_raw=1;
-			check_odd_raw=0;
-			check_even_raw=0;
-
-			for (int i=0; i<6; i=i+1) begin
-				rt_addr_delay[i] = 0;
-				reg_write_delay[i] = 0;
-			end
-		end
-		else begin
-				for (int i=0; i < 6; i++) begin
-					rt_addr_delay[i] = rt_addr_delay[i] | rt_addr_delay_fp1[i];
-					reg_write_delay[i] = rt_addr_delay[i] | reg_write_delay_fp1[i];
-				end
-
-				for (int i=0; i < 3; i++) begin
-					rt_addr_delay[i] = rt_addr_delay[i] | rt_addr_delay_fx2[i];
-					reg_write_delay[i] = rt_addr_delay[i] | reg_write_delay_fx2[i];
-
-					rt_addr_delay[i] = rt_addr_delay[i] | rt_addr_delay_b1[i];
-					reg_write_delay[i] = rt_addr_delay[i] | reg_write_delay_b1[i];
-				end
-
-				for (int i=0; i < 1; i++) begin
-					rt_addr_delay[i] = rt_addr_delay[i] | rt_addr_delay_fx1[i];
-					reg_write_delay[i] = rt_addr_delay[i] | reg_write_delay_fx1[i];
-				end
-				for(int i=0;i<6;i++) begin
-					if(reg_write_delay[i] == 1 &&
-						(
-							(rt_addr_delay[i] == ra_odd_addr && is_ra_odd_valid==1) ||
-							(rt_addr_delay[i] == rb_odd_addr && is_rb_odd_valid==1) ||
-							(rt_addr_delay[i] == rc_odd_addr && is_rc_odd_valid==1 )
-
-						)
-					) begin
-						check_odd_raw = 1;
-						$display("%s %d RAW hazard found ",`__FILE__,`__LINE__);
-						$display("i=  %d addr rt_addr_delay %d ",i,rt_addr_delay[i]);
-					end
-					if(reg_write_delay[i] == 1 &&
-						(
-							(rt_addr_delay[i] == ra_even_addr && is_ra_even_valid==1 ) ||
-							(rt_addr_delay[i] == rb_even_addr && is_rb_even_valid==1 ) ||
-							(rt_addr_delay[i] == rc_even_addr && is_rc_even_valid==1 )
-						)
-					) begin
-						check_even_raw = 1;
-						$display("%s %d RAW hazard found ",`__FILE__,`__LINE__);
-						$display("i=  %d addr rt_addr_delay %d ",i,rt_addr_delay[i]);
-					end
-				end
-				if(reg_write == 1 &&
-					(
-						(rt_addr == ra_odd_addr && is_ra_odd_valid==1) ||
-						(rt_addr == rb_odd_addr && is_rb_odd_valid==1) ||
-						(rt_addr == rc_odd_addr && is_rc_odd_valid==1 )
-
-					)
-				) begin
-					check_odd_raw = 1;
-					$display("%s %d RAW hazard found ",`__FILE__,`__LINE__);
-					$display("i=  %d addr rt_addr_delay %d ",0,rt_addr);
-				end
-				if(reg_write == 1 &&
-					(
-						(rt_addr == ra_even_addr && is_ra_even_valid==1 ) ||
-						(rt_addr == rb_even_addr && is_rb_even_valid==1 ) ||
-						(rt_addr == rc_even_addr && is_rc_even_valid==1 )
-					)
-				) begin
-					check_even_raw = 1;
-					$display("%s %d RAW hazard found ",`__FILE__,`__LINE__);
-					$display("i=  %d addr rt_addr_delay %d ",0,rt_addr);
-				end
-				if(check_even_raw==1) begin
-					stall_even_raw=1;
-				end
-				else begin
-					stall_even_raw=0;
-				end
-				if(check_odd_raw==1) begin
-					stall_odd_raw=1;
-				end
-				else begin
-					stall_odd_raw=0;
-				end
-		end
 
 
 		case (unit)									//Mux to determine which unit will take the instr

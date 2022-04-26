@@ -1,5 +1,6 @@
 module Permute(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb,
-branch_taken, rt_addr_delay, reg_write_delay);
+branch_taken, stall_odd_raw, ra_odd_addr, rb_odd_addr,  rc_odd_addr,stall_even_raw, ra_even_addr, rb_even_addr, rc_even_addr,
+is_ra_odd_valid,is_rb_odd_valid,is_rc_odd_valid, is_ra_even_valid,is_rb_even_valid,is_rc_even_valid);
 	input			clk, reset;
 
 	//RF/FWD Stage
@@ -18,19 +19,138 @@ branch_taken, rt_addr_delay, reg_write_delay);
 
 	//Internal Signals
 	logic [3:0][0:127]	rt_delay;			//Staging register for calculated values
-	output logic [3:0][0:6]	rt_addr_delay;		//Destination register for rt_wb
-	output logic [3:0]			reg_write_delay;	//Will rt_wb write to RegTable
+	logic [3:0][0:6]	rt_addr_delay;		//Destination register for rt_wb
+	logic [3:0]			reg_write_delay;	//Will rt_wb write to RegTable
 
 	logic [6:0]			i;					//7-bit counter for loops
+
+	input logic [0:7] ra_odd_addr,rb_odd_addr,rc_odd_addr;
+	input logic [0:7] ra_even_addr,rb_even_addr,rc_even_addr;
+	output logic stall_odd_raw,stall_even_raw;
+	input logic is_ra_odd_valid,is_rb_odd_valid,is_rc_odd_valid, is_ra_even_valid,is_rb_even_valid,is_rc_even_valid;
 
 
 	// Temp variables
 	logic [0:127] tmp;
 
+	// TODO : Implement all instr
+	always_comb begin : raw
+if(reset==1) begin
+			stall_odd_raw=0;
+			stall_even_raw=0;
+		end
+		else begin
+			if(reg_write == 1 &&
+					(
+						(rt_addr == ra_odd_addr && is_ra_odd_valid == 1) ||
+						(rt_addr == rb_odd_addr && is_rb_odd_valid==1 ) ||
+						(rt_addr == rc_odd_addr && is_rc_odd_valid==1 )
+					)
+				) begin
+					stall_odd_raw = 1;
+					$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr);
+					$display("addr rt_addr_delay %d ",rt_addr);
+			end
+
+			else if(reg_write_delay[0] == 1 &&
+					(
+						(rt_addr_delay[0] == ra_odd_addr && is_ra_odd_valid == 1) ||
+						(rt_addr_delay[0] == rb_odd_addr && is_rb_odd_valid==1 ) ||
+						(rt_addr_delay[0] == rc_odd_addr && is_rc_odd_valid==1 )
+					)
+				) begin
+					stall_odd_raw = 1;
+					$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr_delay[0]);
+					$display("i=  %d addr rt_addr_delay %d ",0,rt_addr_delay[0]);
+			end
+			else if(reg_write_delay[1] == 1 &&
+					(
+						(rt_addr_delay[1] == ra_odd_addr && is_ra_odd_valid == 1) ||
+						(rt_addr_delay[1] == rb_odd_addr && is_rb_odd_valid==1 ) ||
+						(rt_addr_delay[1] == rc_odd_addr && is_rc_odd_valid==1 )
+					)
+				) begin
+					stall_odd_raw = 1;
+					$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr_delay[1]);
+					$display("i=  %d addr rt_addr_delay %d ",1,rt_addr_delay[1]);
+			end
+			else if(reg_write_delay[2] == 1 &&
+					(
+						(rt_addr_delay[2] == ra_odd_addr && is_ra_odd_valid == 1) ||
+						(rt_addr_delay[2] == rb_odd_addr && is_rb_odd_valid==1 ) ||
+						(rt_addr_delay[2] == rc_odd_addr && is_rc_odd_valid==1 )
+					)
+				) begin
+					stall_odd_raw = 1;
+					$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr_delay[2]);
+					$display("i=  %d addr rt_addr_delay %d ",2,rt_addr_delay[2]);
+			end
+			else begin
+				stall_odd_raw=0;
+			end
+
+			if(reg_write == 1 &&
+					(
+						(rt_addr == ra_even_addr && is_ra_even_valid ==1  ) ||
+						(rt_addr == rb_even_addr && is_rb_even_valid ==1) ||
+						(rt_addr == rc_even_addr && is_rc_even_valid==1)
+					)
+				) begin
+					stall_even_raw = 1;
+					$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr);
+					$display("addr rt_addr_delay %d ",rt_addr);
+			end
+			else if(reg_write_delay[0] == 1 &&
+					(
+						(rt_addr_delay[0] == ra_even_addr && is_ra_even_valid ==1  ) ||
+						(rt_addr_delay[0] == rb_even_addr && is_rb_even_valid ==1) ||
+						(rt_addr_delay[0] == rc_even_addr && is_rc_even_valid==1)
+					)
+				) begin
+					stall_even_raw = 1;
+					$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr_delay[0]);
+					$display("i=  %d addr rt_addr_delay %d ",0,rt_addr_delay[0]);
+			end
+
+			else if(reg_write_delay[1] == 1 &&
+					(
+						(rt_addr_delay[1] == ra_even_addr && is_ra_even_valid ==1  ) ||
+						(rt_addr_delay[1] == rb_even_addr && is_rb_even_valid ==1) ||
+						(rt_addr_delay[1] == rc_even_addr && is_rc_even_valid==1)
+					)
+				) begin
+					stall_even_raw = 1;
+					$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr_delay[1]);
+					$display("i=  %d addr rt_addr_delay %d ",1,rt_addr_delay[1]);
+			end
+
+			else if(reg_write_delay[2] == 1 &&
+					(
+						(rt_addr_delay[2] == ra_even_addr && is_ra_even_valid ==1  ) ||
+						(rt_addr_delay[2] == rb_even_addr && is_rb_even_valid ==1) ||
+						(rt_addr_delay[2] == rc_even_addr && is_rc_even_valid==1)
+					)
+				) begin
+					stall_even_raw = 1;
+					$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr_delay[2]);
+					$display("i=  %d addr rt_addr_delay %d ",2,rt_addr_delay[2]);
+			end
+			else begin
+				stall_even_raw = 0;
+			end
+
+		end
+	end
 	always_comb begin
 		rt_wb = rt_delay[3];
 		rt_addr_wb = rt_addr_delay[3];
 		reg_write_wb = reg_write_delay[3];
+		stall_odd_raw=0;
+
+		// check if the ra or rb of new instruction is clashing
+		// with the rt_add_wb
+
+
 	end
 
 	always_ff @(posedge clk) begin
@@ -56,20 +176,20 @@ branch_taken, rt_addr_delay, reg_write_delay);
 			reg_write_delay[2] <= reg_write_delay[1];
 
 			rt_delay[1] <= rt_delay[0];
-			rt_addr_delay[1] <= rt_addr_delay[0];
+			rt_addr_delay[1] <= rt_addr_delay[2];
 			reg_write_delay[1] <= reg_write_delay[0];
 
 			if (format == 0 && op == 0) begin					//nop : No Operation (Load)
 				rt_delay[0] <= 0;
-				rt_addr_delay[0] <= 0;
+				rt_addr_delay[2] <= 0;
 				reg_write_delay[0] <= 0;
 			end
 			else begin
-				rt_addr_delay[0] <= rt_addr;
+				rt_addr_delay[2] <= rt_addr;
 				reg_write_delay[0] <= reg_write;
 				if (branch_taken) begin
 					rt_delay[0] <= 0;
-					rt_addr_delay[0] <= 0;
+					rt_addr_delay[2] <= 0;
 					reg_write_delay[0] <= 0;
 				end
 				else if (format == 0) begin
@@ -182,7 +302,7 @@ branch_taken, rt_addr_delay, reg_write_delay);
                         end
 						default begin
 							rt_delay[0] <= 0;
-							rt_addr_delay[0] <= 0;
+							rt_addr_delay[2] <= 0;
 							reg_write_delay[0] <= 0;
 						end
 					endcase
@@ -272,7 +392,7 @@ branch_taken, rt_addr_delay, reg_write_delay);
                         end
 						default begin
 							rt_delay[0] = 0;
-							rt_addr_delay[0] = 0;
+							rt_addr_delay[2] = 0;
 							reg_write_delay[0] = 0;
 						end
 					endcase
