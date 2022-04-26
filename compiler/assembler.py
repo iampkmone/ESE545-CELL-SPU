@@ -84,9 +84,9 @@ class Assembler:
                 object.write(binary+"\n")
                 if self.debug_level==2:
                     o_hex = '0x{0:0{1}X}'.format(int(binary,2),8)
-                    d_object.write(str(binary)+" "+o_hex+"\t"+line)
+                    d_object.write(str(binary)+"\t"+o_hex+"\t"+line)
                 else:
-                    d_object.write(line+"\t"+str(binary)+"\n")
+                    d_object.write(str(binary)+"\t"+line)
 
 
     def compute(self,format,opcode,ins):
@@ -242,6 +242,6 @@ asm = Assembler(ins_list_name="instructions.lst", input_file=input_file_name,
 print(debug)
 if debug==0:
     asm.parse_input()
-elif debug>1:
+elif debug>=1:
     print("debug ")
     asm.parse_input_1()
