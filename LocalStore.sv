@@ -89,7 +89,7 @@ module LocalStore(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_write
 							rt_delay[0] <= mem[$signed((ra[0:31]) + $signed(imm[8:17]))];
 						end
 						8'b00100100 : begin					//stqd : Store Quadword (d-form)
-							mem[$signed(ra[0:31] + $signed(imm[8:17]))] <= rt_st;
+							mem[($signed(ra[0:31]) + $signed(imm[8:17]))] <= rt_st;
 							reg_write_delay[0] <= 0;
 						end
 						default begin

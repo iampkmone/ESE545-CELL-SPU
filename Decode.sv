@@ -184,7 +184,6 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 			second = check_one(0);
 			instr_next[0] = 0;
 			instr_next[1] = 0;
-			//finished_var = 0;
 		end
 		else begin
 			if (branch_taken == 1) begin
@@ -195,20 +194,9 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 				instr_next[1] = 0;
 				first = check_one(0);
 				second = check_one(0);
-				//finished_var = 0;					//If branch is taken right as program finishes, system must undo finished flag
 			end
-			/*else if (finished) begin			//If program is finished, do not issue any more instr
-				instr_next[0] = NOP;
-				instr_next[1] = LNOP;
-				stall_var = 0;
-				stall_pc_var = 0;
-				first_odd = 0;
-				first = check_one(0);
-				second = check_one(0);
-				finished_var = 1;
-			end*/
-			else begin// if (stall == 0) begin
-				if (stall == 1) begin// || finished == 1) begin
+			else begin
+				if (stall == 1) begin
 					instr_dec[0] = instr_next_reg[0];
 					instr_dec[1] = instr_next_reg[1];
 					stall_var = 0;
@@ -957,16 +945,15 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 				check_one.unit = 1;
 				check_one.imm = $signed(instr[8:17]);
 			end
-			else if (instr[0:7] == 8'b00110100) begin		//stqd
+			else if (instr[0:7] == 8'b00100100) begin		//stqd
 				check_one.format = 4;
 				check_one.ra_valid = 1;
 				check_one.rb_valid = 0;
-				check_one.rc_valid = 0;
-				check_one.op = 8'b00110100;
+				check_one.rc_valid = 1;
+				check_one.op = 8'b00100100;
 				check_one.unit = 1;
 				check_one.imm = $signed(instr[8:17]);
 				check_one.reg_write = 0;
-				check_one.rc_valid = 1;
 			end
 			else begin
 				check_one.format = 5;					//RI16-type

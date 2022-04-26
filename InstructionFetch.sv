@@ -72,8 +72,6 @@ module IF(clk, reset, ins_cache, pc, read_enable);
                 
             end
             else begin
-                
-                //pc <= pc_wb; // Incase of stall we rely  on pc_wb to start fetch of new instruction
 				if (branch_taken == 0) begin
 					$display($time,"IF: pc update to pc_wb %d pc %d" ,pc_wb, pc);
 					instr_d[0]<=ins_cache[pc_wb];
@@ -82,8 +80,8 @@ module IF(clk, reset, ins_cache, pc, read_enable);
 				else begin
 					pc <= pc_wb & ~1;
 					$display($time,"IF: pc update to pc_wb %d pc %d" ,pc_wb, pc);
-					if (pc_wb & 1) begin				// If branching to an odd number instr
-						instr_d[0]<=ins_cache[pc_wb-1];
+					if (pc_wb & 256'h1) begin				// If branching to an odd number instr
+						instr_d[0]<=ins_cache[pc_wb-2];
 						instr_d[1]<=0;
 					end
 					else begin
@@ -91,14 +89,6 @@ module IF(clk, reset, ins_cache, pc, read_enable);
 						instr_d[1]<=ins_cache[pc_wb-1];
 					end
 				end
-				
-				//instr_d[0]<=NOP;
-                //instr_d[1]<=LNOP;
-                
-                // $display($time," IF: reading in using pc_wb");
-                // $display($time," IF: ins %b ins %b pc %d pc_wb %d read_enable %d ",ins_cache[pc_wb], ins_cache[pc_wb+1],pc,pc_wb, read_enable);
-                // $display($time," IF: ins %h ins %h pc %d pc_wb %d read_enable %d ",ins_cache[pc_wb], ins_cache[pc_wb+1],pc,pc_wb, read_enable);
-
             end
         end
     end
