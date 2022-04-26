@@ -1,5 +1,7 @@
 module OddPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rt_st, imm, reg_write, pc_in, rt_wb, rt_addr_wb, reg_write_wb, pc_wb, branch_taken, fw_wb, fw_addr_wb, fw_write_wb, first, branch_kill,
-stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_addr, rc_even_addr);
+stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_addr, rc_even_addr,
+is_ra_odd_valid,is_rb_odd_valid,is_rc_odd_valid, is_ra_even_valid,is_rb_even_valid,is_rc_even_valid);
+
 	input			clk, reset;
 
 	//RF/FWD Stage
@@ -51,6 +53,7 @@ stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_a
 	input logic [0:7] ra_odd_addr,rb_odd_addr;
 	input logic [0:7] ra_even_addr,rb_even_addr,rc_even_addr;
 	output logic stall_odd_raw,stall_even_raw;
+	input logic is_ra_odd_valid,is_rb_odd_valid,is_rc_odd_valid, is_ra_even_valid,is_rb_even_valid,is_rc_even_valid;
 
 
 

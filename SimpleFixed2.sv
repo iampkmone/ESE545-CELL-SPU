@@ -40,7 +40,26 @@ stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_a
 			stall_odd_raw = 0;
 		end
 		else begin
-			if(reg_write_delay[0] == 1 &&
+			$display("%s ra_odd_addr %d  is_ra_odd_valid %d ",`__FILE__,ra_odd_addr,1);
+			$display("%s rb_odd_addr %d  is_rb_odd_valid %d",`__FILE__,rb_odd_addr,1);
+			$display("%s rc_odd_addr %d  is_rc_odd_valid %d ",`__FILE__,rb_odd_addr,1);
+			$display("%s ra_even_addr %d is_ra_even_valid %d ",`__FILE__,ra_odd_addr, 1);
+			$display("%s rb_even_addr %d is_rb_even_valid %d",`__FILE__,rb_even_addr, 1);
+			$display("%s rc_even_addr %d is_rc_even_valid %d",`__FILE__,rc_even_addr, 1);
+
+
+			$display("%s %d rt addr %d ",`__FILE__,`__LINE__,rt_addr);
+			if(reg_write==1 &&
+			(
+					(rt_addr == ra_odd_addr ) ||
+					(rt_addr == rb_odd_addr )
+				)
+			) begin
+					stall_odd_raw = 1;
+					$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr);
+					$display("i=  %d addr rt_addr_delay %d ",0,rt_addr);
+			end
+			else if(reg_write_delay[0] == 1 &&
 					(
 						(rt_addr_delay[0] == ra_odd_addr ) ||
 						(rt_addr_delay[0] == rb_odd_addr )
@@ -74,8 +93,18 @@ stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_a
 				stall_odd_raw=0;
 			end
 
-
-			if(reg_write_delay[0] == 1 &&
+			if(reg_write == 1 &&
+					(
+						(rt_addr == ra_even_addr ) ||
+						(rt_addr == rb_even_addr ) ||
+						(rt_addr == rc_even_addr )
+					)
+				) begin
+					stall_even_raw = 1;
+					$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr);
+					$display("i=  %d addr rt_addr_delay %d ",0,rt_addr);
+			end
+			else if(reg_write_delay[0] == 1 &&
 					(
 						(rt_addr_delay[0] == ra_even_addr ) ||
 						(rt_addr_delay[0] == rb_even_addr ) ||

@@ -1,5 +1,6 @@
 module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb, branch_taken, fw_wb, fw_addr_wb, fw_write_wb,
-stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_addr, rc_even_addr);
+stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_addr, rc_even_addr,
+is_ra_odd_valid,is_rb_odd_valid,is_rc_odd_valid, is_ra_even_valid,is_rb_even_valid,is_rc_even_valid);
 	input			clk, reset;
 
 	//RF/FWD Stage
@@ -57,6 +58,7 @@ stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_a
 	input logic [0:7] ra_even_addr,rb_even_addr,rc_even_addr;
 	output logic stall_odd_raw,stall_even_raw;
 	logic stall_odd_raw1,stall_even_raw1,stall_odd_raw2,stall_even_raw2,stall_odd_raw3,stall_even_raw3,stall_odd_raw4,stall_even_raw4;
+	input logic is_ra_odd_valid,is_rb_odd_valid,is_rc_odd_valid, is_ra_even_valid,is_rb_even_valid,is_rc_even_valid;
 
 	// TODO : Support forwarding signals
 
@@ -107,6 +109,11 @@ stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_a
 			stall_odd_raw =  stall_odd_raw1|stall_odd_raw2|stall_odd_raw3|stall_odd_raw4;
 			stall_even_raw = stall_even_raw1|stall_even_raw2|stall_even_raw3|stall_even_raw4;
 		end
+		$display("%s stall_even_raw1 %d stall_odd_raw1 %d",`__FILE__,stall_even_raw1, stall_odd_raw1);
+		$display("%s stall_even_raw2 %d stall_odd_raw2 %d",`__FILE__,stall_even_raw2, stall_odd_raw2);
+		$display("%s stall_even_raw3 %d stall_odd_raw3 %d",`__FILE__,stall_even_raw3, stall_odd_raw3);
+		$display("%s stall_even_raw4 %d stall_odd_raw4 %d",`__FILE__,stall_even_raw4, stall_odd_raw4);
+
 		case (unit)									//Mux to determine which unit will take the instr
 			2'b00 : begin							//Instr going to fp1
 				fp1_op = op;

@@ -32,10 +32,12 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 
 
 
-	logic stall_odd_raw, stall_even_raw;
+	logic stall_odd_raw, stall_even_raw,same_issue_raw;
 
 	logic [0:7]		ra_odd_addr,ra_even_addr, rb_odd_addr,rb_even_addr, rc_odd_addr,rc_even_addr;
 	logic [0:31] raw_odd_issue,raw_even_issue,raw_odd1_issue,raw_even1_issue;
+	logic is_ra_odd_valid,is_rb_odd_valid,is_rc_odd_valid, is_ra_even_valid,is_rb_even_valid,is_rc_even_valid;
+
 	logic raw_hazard,both_odd,both_even;
 
 typedef struct {
@@ -47,6 +49,7 @@ typedef struct {
 	logic [1:0]		unit_even, unit_odd;
 	logic [2:0]		format_even, format_odd;
 	logic [0:7]		ra_odd_addr,ra_even_addr, rb_odd_addr,rb_even_addr, rc_odd_addr,rc_even_addr;
+	logic is_ra_odd_valid,is_rb_odd_valid,is_rc_odd_valid, is_ra_even_valid,is_rb_even_valid,is_rc_even_valid;
 } op_codes;
 op_codes op, tmp_op;
 
@@ -68,8 +71,10 @@ stall_state state;
         .format_even(format_even), .format_odd(format_odd),
         .imm_even(imm_even), .imm_odd(imm_odd),
         .reg_write_even(reg_write_even), .reg_write_odd(reg_write_odd), .first_odd(first_odd_out),
-		.stall_odd_raw(stall_odd_raw), .ra_odd_addr(ra_odd_addr), .rb_odd_addr(rb_odd_addr),
-		.stall_even_raw(stall_even_raw), .ra_even_addr(ra_even_addr), .rb_even_addr(rb_even_addr),.rc_even_addr(rc_even_addr));
+		.stall_odd_raw(stall_odd_raw), .ra_odd_addr(ra_odd_addr), .rb_odd_addr(rb_odd_addr),.rc_odd_addr(rc_odd_addr),
+		.stall_even_raw(stall_even_raw), .ra_even_addr(ra_even_addr), .rb_even_addr(rb_even_addr),.rc_even_addr(rc_even_addr),
+		.is_ra_odd_valid(is_ra_odd_valid),.is_rb_odd_valid(is_rb_odd_valid),.is_rc_odd_valid(is_rc_odd_valid), .is_ra_even_valid(is_ra_even_valid),
+		.is_rb_even_valid(is_rb_even_valid),.is_rc_even_valid(is_rc_even_valid));
 
 
 
@@ -174,6 +179,13 @@ stall_state state;
 			finished = 0;
 			both_odd = 0;
 			both_even = 0;
+			same_issue_raw = 0;
+			is_ra_even_valid=0;
+			is_rb_even_valid=0;
+			is_rc_even_valid=0;
+			is_ra_odd_valid=0;
+			is_rb_odd_valid=0;
+			is_rc_odd_valid=0;
 		end
 		else begin
 			$display($time," instr[0] %b instr[1] %b stall %d ",instr[0],instr[1], stall );
@@ -226,7 +238,7 @@ stall_state state;
 
 					stall_pc = pc;  // in this case we should increement pc with only one
 					stall = 1;
-
+					same_issue_raw = 0;
 					first_odd = 0;				//Don't care but need val
 				end
 				else if(op.op_even!=0 && op.op_odd==0) begin													//Two even instr in pair
@@ -242,7 +254,7 @@ stall_state state;
 					instr_even_issue = instr[1];
 					instr_odd_issue = 32'h0000;
 					instr_even1_issue = instr[0];
-
+					same_issue_raw = 0;
 					`debug2("");
 					first_odd = 0;				//Don't care but need val
 					$display($time," Decode: Both instruction are even pipe %d ",pc);
@@ -252,19 +264,32 @@ stall_state state;
 					both_odd=0;
 					op = check(instr[1],instr[0]);
 					if ((op.rt_addr_even != op.rt_addr_odd) || (op.reg_write_even != op.reg_write_odd)) begin
-						`debug2("");
-						stall_pc = 0;
-						stall = 0;
+
 						first_odd = 1;				//Odd instr first, then even
 
-						`debug2("");
-						$display($time," Decode : all good  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
-
-						$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
-						$display($time," %b %b ",instr[0], instr[1]);
-						$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
+						if(op.rt_addr_even==op.ra_even_addr || op.rt_addr_even==op.rb_even_addr || op.rt_addr_even==op.rc_even_addr) begin
+							// RAW hazard for same issue instruction
+							`debug2("RAW same issue detected ");
+							op = check(32'h0000,instr[0]);
+							instr_even_issue=instr[1];
+							instr_odd_issue=32'h0000;
+							stall = 1; // stall untill the issue is resolved;
+							stall_pc = pc;
+							same_issue_raw = 1;
+						end
+						else begin
+							`debug2("");
+							stall_pc = 0;
+							stall = 0;
+							same_issue_raw = 0;
+							`debug2("");
+							$display($time," Decode : all good  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
+							$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
+							$display($time," %b %b ",instr[0], instr[1]);
+							$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
+						end
 						if (instr[0] == 32'h0000 || instr[1] == 32'h0000)
-							finished = 1;			//Check for stop instr
+								finished = 1;			//Check for stop instr
 					end
 					else begin							//If rt_addr are same with both reg_wr enabled, with odd instr first
 						`debug2("");
@@ -283,20 +308,35 @@ stall_state state;
 					both_odd=0;
 
 					if ((op.rt_addr_even != op.rt_addr_odd) || (op.reg_write_even != op.reg_write_odd)) begin
-						`debug2("");
-						stall_pc = 0;
-						stall = 0;
-						first_odd = 0;				//Even instr first, then odd
-						`debug2(" ");
-						$display($time," Decode : all good  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
 
-						$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
-						$display($time," %b %b ",instr[0], instr[1]);
-						$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
+						if(op.rt_addr_even==op.ra_odd_addr || op.rt_addr_even==op.rb_odd_addr ) begin
+							// RAW hazard for same issue instruction
+							`debug2("RAW same issue detected ");
+							op = check(instr[0],32'h0000);
+							instr_odd_issue = instr[1];
+							instr_even_issue = 32'h0000;
+							stall = 1; // stall untill the issue is resolved;
+							stall_pc = pc;
+							same_issue_raw = 1;
+						end
+						else begin
+							`debug2("");
+							stall_pc = 0;
+							stall = 0;
+							first_odd = 0;				//Even instr first, then odd
+							`debug2(" ");
+							$display($time," Decode : all good  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
+							same_issue_raw = 0;
+							$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
+							$display($time," %b %b ",instr[0], instr[1]);
+							$display($time," XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX ");
+						end
+
 						if (instr[0] == 32'h0000 || instr[1] == 32'h0000)
 							finished = 1;			//Check for stop instr
 					end
 					else begin							//If rt_addr are same with both reg_wr enabled, with even instr first
+						same_issue_raw = 0;
 						`debug2("");
 						stall = 1;
 						stall_pc = pc;
@@ -311,11 +351,11 @@ stall_state state;
 			else begin
 				if((stall_even_raw|stall_odd_raw)==0 && raw_hazard==0) begin
 					if(stall==1) begin
-					op = check(instr_even_issue, instr_odd_issue);
-					`debug2("");
-					$display($time," Decode : all good with stall  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
-					// pc_wb = stall_pc;
-					`debug2("");
+						op = check(instr_even_issue, instr_odd_issue);
+						`debug2("");
+						$display($time," Decode : all good with stall  PC %d op_even %b op_odd %b ",pc, op.op_even, op.op_odd);
+						// pc_wb = stall_pc;
+						`debug2("");
 					end
 					else begin
 						// end of code
@@ -356,24 +396,36 @@ stall_state state;
 		else begin
 			`debug2("");
 		end
+		is_ra_even_valid=op.is_ra_even_valid;
+		is_rb_even_valid=op.is_rb_even_valid;
+		is_rc_even_valid=op.is_rc_even_valid;
+
+		is_ra_odd_valid=op.is_ra_odd_valid;
+		is_rb_odd_valid=op.is_rb_odd_valid;
+		is_rc_odd_valid=op.is_rc_odd_valid;
 
 		// state = check_for_hazard(tmp_op);
-		$display("ra_odd_addr %d ",ra_odd_addr);
-		$display("rb_odd_addr %d ",rb_odd_addr);
-		$display("ra_even_addr %d ",ra_odd_addr);
-		$display("rb_even_addr %d ",rb_even_addr);
-		$display("rc_even_addr %d ",rc_even_addr);
+		$display("%s ra_odd_addr %d  is_ra_odd_valid %d ",`__FILE__,ra_odd_addr,is_ra_odd_valid);
+		$display("%s rb_odd_addr %d  is_rb_odd_valid %d",`__FILE__,rb_odd_addr,is_rb_odd_valid);
+		$display("%s rc_odd_addr %d  is_rc_odd_valid %d ",`__FILE__,rb_odd_addr,is_rc_odd_valid);
+		$display("%s ra_even_addr %d is_ra_even_valid %d ",`__FILE__,ra_odd_addr, is_ra_even_valid);
+		$display("%s rb_even_addr %d is_rb_even_valid %d",`__FILE__,rb_even_addr, is_rb_even_valid);
+		$display("%s rc_even_addr %d is_rc_even_valid %d",`__FILE__,rc_even_addr, is_rc_even_valid);
+
 
 		`debug2("");
-
-		if( (stall_odd_raw|stall_even_raw)>0) begin
+		$display("same_issue_raw %d ",same_issue_raw);
+		if(state.mask==5'b00011) begin
+			same_issue_raw=0;
+		end
+		if( (stall_odd_raw|stall_even_raw)>0 || same_issue_raw==1) begin
 			`debug2("");
 			stall=1;
 			stall_pc=pc;
 		end
 		else begin
 			`debug2("");
-			if( ((both_even|both_odd)==0)|| state.mask==5'hFF) begin
+			if( ((both_even|both_odd)==0)|| state.mask==5'hFF ) begin
 				stall=0;
 				`debug2("");
 			end
@@ -422,6 +474,22 @@ stall_state state;
 					end
 					state.mask=5'b00010;
 
+				end
+				else if(same_issue_raw ==1) begin
+						state.final_op =  check(32'h0000,32'h0000);
+						if(first_odd==1) begin
+							// in case of non aligned instruction
+							state.instr_even_issue  =  instr_even_issue;
+							state.instr_odd_issue = 32'h0000;
+							`debug2("raw for non-aligned issue");
+						end
+						else begin
+							state.instr_even_issue = 32'h0000;
+							state.instr_odd_issue = instr_odd_issue;
+							`debug2("raw for aligned issue");
+						end
+						`debug2("Same ins hazard processing 2nd ins");
+						state.mask = 5'b00011;
 				end
 				else begin
 					`debug2("else block");
@@ -497,8 +565,9 @@ stall_state state;
 					state.mask=5'hFF;
 					state.final_op = check(raw_even_issue,raw_odd_issue);
 				end
-				else if(state.mask ==  5'b11000 || state.mask == 5'b01000) begin
+				else if(state.mask ==  5'b11000 || state.mask == 5'b01000 || state.mask == 5'b00011) begin
 					`debug2("");
+					// continue to stall
 					state.final_op=check(32'h0000,32'h0000);
 				end
 				else begin
@@ -617,64 +686,101 @@ stall_state state;
 			check.unit_even = 0;
 			check.rt_addr_even = 0;
 			check.imm_even = 0;
+			check.is_ra_even_valid=0;
+			check.is_rb_even_valid=0;
+			check.is_rc_even_valid=0;
 		end													//RRR-type
 		else if	(even[0:3] == 4'b1100) begin			//mpya
 			check.format_even = 1;
 			check.op_even = 4'b1100;
 			check.unit_even = 0;
 			check.rt_addr_even = even[4:10];
+			check.is_ra_even_valid=1;
+			check.is_rb_even_valid=1;
+			check.is_rc_even_valid=1;
+
 		end
 		else if (even[0:3] == 4'b1110) begin			//fma
 			check.format_even = 1;
 			check.op_even = 4'b1110;
 			check.unit_even = 0;
 			check.rt_addr_even = even[4:10];
+			check.is_ra_even_valid=1;
+			check.is_rb_even_valid=1;
+			check.is_rc_even_valid=1;
+
 		end
 		else if (even[0:3] == 4'b1111) begin			//fms
 			check.format_even = 1;
 			check.op_even = 4'b1111;
 			check.unit_even = 0;
 			check.rt_addr_even = even[4:10];
+			check.is_ra_even_valid=1;
+			check.is_rb_even_valid=1;
+			check.is_rc_even_valid=1;
+
 		end													//RI18-type
 		else if (even[0:6] == 7'b0100001) begin		//ila
 			check.format_even = 6;
 			check.op_even = 7'b0100001;
 			check.unit_even = 3;
 			check.imm_even = $signed(even[7:24]);
+			check.is_ra_even_valid=0;
+			check.is_rb_even_valid=0;
+			check.is_rc_even_valid=0;
+
 		end													//RI8-type
 		else if (even[0:9] == 10'b0111011000) begin	//cflts
 			check.format_even = 3;
 			check.op_even = 10'b0111011000;
 			check.unit_even = 0;
 			check.imm_even = $signed(even[10:17]);
+			check.is_ra_even_valid=1;
+			check.is_rb_even_valid=0;
+			check.is_rc_even_valid=0;
 		end
 		else if (even[0:9] == 10'b0111011001) begin	//cfltu
 			check.format_even = 3;
 			check.op_even = 10'b0111011001;
 			check.unit_even = 0;
 			check.imm_even = $signed(even[10:17]);
+			check.is_ra_even_valid=1;
+			check.is_rb_even_valid=0;
+			check.is_rc_even_valid=0;
 		end													//RI16-type
 		else if (even[0:8] == 9'b010000011) begin		//ilh
 			check.format_even = 5;
 			check.op_even = 9'b010000011;
 			check.unit_even = 3;
 			check.imm_even = $signed(even[9:24]);
+			check.is_ra_even_valid=0;
+			check.is_rb_even_valid=0;
+			check.is_rc_even_valid=0;
 		end
 		else if (even[0:8] == 9'b010000010) begin		//ilhu
 			check.format_even = 5;
 			check.op_even = 9'b010000010;
 			check.unit_even = 3;
 			check.imm_even = $signed(even[9:24]);
+			check.is_ra_even_valid=0;
+			check.is_rb_even_valid=0;
+			check.is_rc_even_valid=0;
 		end
 		else if (even[0:8] == 9'b011000001) begin		//iohl
 			check.format_even = 5;
 			check.op_even = 9'b011000001;
 			check.unit_even = 3;
 			check.imm_even = $signed(even[9:24]);
+			check.is_ra_even_valid=0;
+			check.is_rb_even_valid=0;
+			check.is_rc_even_valid=0;
 		end
 		else begin
 			check.format_even = 4;				//RI10-type
 			check.imm_even = $signed(even[8:17]);
+			check.is_ra_even_valid=1;
+			check.is_rb_even_valid=0;
+			check.is_rc_even_valid=0;
 			case(even[0:7])
 				8'b01110100 : begin			//mpyi
 					check.op_even = 8'b01110100;
@@ -776,6 +882,11 @@ stall_state state;
 			endcase
 			if (check.format_even == 7) begin
 				check.format_even = 0;					//RR-type
+
+				check.is_ra_even_valid=1;
+				check.is_rb_even_valid=1;
+				check.is_rc_even_valid=0;
+
 				case(even[0:10])
 					11'b01111000100 : begin			//mpy
 						check.op_even = 11'b01111000100;
@@ -844,6 +955,7 @@ stall_state state;
 					11'b01010110100 : begin			//cntb
 						check.op_even = 11'b01010110100;
 						check.unit_even = 2;
+						check.is_rb_even_valid=0;
 					end
 					11'b00011010011 : begin			//avgb
 						check.op_even = 11'b00011010011;
@@ -936,6 +1048,9 @@ stall_state state;
 				if (check.format_even == 7) begin
 					check.format_even = 2;					//RI7-type
 					check.imm_even = $signed(even[11:17]);
+					check.is_ra_even_valid=1;
+					check.is_rc_even_valid=0;
+					check.is_rc_even_valid=0;
 					case(even[0:10])
 						11'b00001111011 : begin			//shli
 							check.op_even = 11'b00001111011;
@@ -963,6 +1078,9 @@ stall_state state;
 							check.unit_even = 0;
 							check.rt_addr_even = 0;
 							check.imm_even = 0;
+							check.is_ra_even_valid=0;
+							check.is_rb_even_valid=0;
+							check.is_rc_even_valid=0;
 						end
 					endcase
 				end
@@ -981,12 +1099,19 @@ stall_state state;
 			check.unit_odd = 0;
 			check.rt_addr_odd = 0;
 			check.imm_odd = 0;
+			check.is_ra_odd_valid=0;
+			check.is_rb_odd_valid=0;
+			check.is_rc_odd_valid=0;
+
 		end													//RI10-type
 		else if (odd[0:7] == 8'b00110100) begin		//lqd
 			check.format_odd = 4;
 			check.op_odd = 8'b00110100;
 			check.unit_odd = 1;
 			check.imm_odd = $signed(odd[8:17]);
+			check.is_ra_odd_valid=1;
+			check.is_rc_odd_valid=0;
+			check.is_rc_odd_valid=0;
 		end
 		else if (odd[0:7] == 8'b00110100) begin		//stqd
 			check.format_odd = 4;
@@ -994,10 +1119,16 @@ stall_state state;
 			check.unit_odd = 1;
 			check.imm_odd = $signed(odd[8:17]);
 			check.reg_write_odd = 0;
+			check.is_ra_odd_valid=1;
+			check.is_rc_odd_valid=0;
+			check.is_rc_odd_valid=1;
 		end
 		else begin
 			check.format_odd = 5;					//RI16-type
 			check.imm_odd = $signed(odd[9:24]);
+			check.is_ra_odd_valid=0;
+			check.is_rb_odd_valid=0;
+			check.is_rc_odd_valid=0;
 			case(odd[0:8])
 				9'b001100001 : begin		//lqa
 					check.op_odd = 9'b001100001;
@@ -1007,6 +1138,7 @@ stall_state state;
 					check.op_odd = 9'b001000001;
 					check.unit_odd = 1;
 					check.reg_write_odd = 0;
+					check.is_rc_odd_valid=1;
 				end
 				9'b001100100 : begin		//br
 					check.op_odd = 9'b001100100;
@@ -1026,16 +1158,21 @@ stall_state state;
 					check.op_odd = 9'b001000010;
 					check.unit_odd = 2;
 					check.reg_write_odd = 0;
+					check.is_rc_odd_valid=1;
 				end
 				9'b001000000 : begin		//brz
 					check.op_odd = 9'b001000000;
 					check.unit_odd = 2;
 					check.reg_write_odd = 0;
+					check.is_rc_odd_valid=1;
 				end
 				default : check.format_odd = 7;
 			endcase
 			if (check.format_odd == 7) begin
 				check.format_odd = 0;					//RR-type
+				check.is_ra_odd_valid=1;
+				check.is_rb_odd_valid=1;
+				check.is_rc_odd_valid=0;
 				$display("check: odd[0:10] %b ",odd[0:10]);
 				case(odd[0:10])
 					11'b00111011011 : begin		//shlqbi
@@ -1058,14 +1195,17 @@ stall_state state;
 					11'b00110110010 : begin		//gbb
 						check.op_odd = 11'b00110110010;
 						check.unit_odd = 0;
+						check.is_rb_odd_valid=0;
 					end
 					11'b00110110001 : begin		//gbh
 						check.op_odd = 11'b00110110001;
 						check.unit_odd = 0;
+						check.is_rb_odd_valid=0;
 					end
 					11'b00110110000 : begin		//gb
 						check.op_odd = 11'b00110110000;
 						check.unit_odd = 0;
+						check.is_rb_odd_valid=0;
 					end
 					11'b00111000100 : begin		//lqx
 						check.op_odd = 11'b00111000100;
@@ -1075,11 +1215,13 @@ stall_state state;
 						check.op_odd = 11'b00101000100;
 						check.unit_odd = 1;
 						check.reg_write_odd = 0;
+						check.is_rc_odd_valid=1;
 					end
 					11'b00110101000 : begin		//bi
 						check.op_odd = 11'b00110101000;
 						check.unit_odd = 2;
 						check.reg_write_odd = 0;
+						check.is_rb_odd_valid=0;
 					end
 					11'b00000000001 : begin		//lnop
 						check.op_odd = 11'b00000000001;
@@ -1091,6 +1233,9 @@ stall_state state;
 				if (check.format_odd == 7) begin
 					check.format_odd = 2;					//RI7-type
 					check.imm_odd = $signed(odd[11:17]);
+					check.is_ra_odd_valid=1;
+					check.is_rb_odd_valid=0;
+					check.is_rc_odd_valid=0;
 					case(odd[0:10])
 						11'b00111111011 : begin		//shlqbii
 							check.op_odd = 11'b00111111011;
@@ -1114,6 +1259,9 @@ stall_state state;
 							check.unit_odd = 0;
 							check.rt_addr_odd = 0;
 							check.imm_odd = 0;
+							check.is_ra_odd_valid=0;
+							check.is_rb_odd_valid=0;
+							check.is_rc_odd_valid=0;
 						end
 					endcase
 				end

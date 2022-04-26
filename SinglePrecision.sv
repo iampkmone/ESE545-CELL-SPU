@@ -67,6 +67,18 @@ stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_a
 			check_odd_raw=0;
 
 			// Need to run loop for 1 less number for the shorter pipe
+			$display("%s %d rt addr %d ",`__FILE__,`__LINE__,rt_addr);
+			if(reg_write==1 &&
+			(
+					(rt_addr == ra_odd_addr ) ||
+					(rt_addr == rb_odd_addr )
+				)
+			) begin
+					stall_odd_raw = 1;
+					$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr);
+					$display("i=  %d addr rt_addr_delay %d ",0,rt_addr);
+			end
+			else begin
 			for(int i=0;i<6;i++) begin
 
 				if(reg_write_delay[i] == 1 &&
@@ -91,7 +103,17 @@ stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_a
 					$display("i=  %d addr rt_addr_delay %d ",i,rt_addr_delay[i]);
 				end
 			end
-			if(check_odd_raw!=0) begin
+			if(reg_write==1 &&
+			(
+					(rt_addr == ra_odd_addr ) ||
+					(rt_addr == rb_odd_addr )
+				)
+			) begin
+					stall_odd_raw = 1;
+					$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr);
+					$display("i=  %d addr rt_addr_delay %d ",0,rt_addr);
+			end
+			else if(check_odd_raw!=0) begin
 				stall_odd_raw=1;
 				$display("%s %d odd ins hazard ",`__FILE__,`__LINE__);
 			end
@@ -99,7 +121,18 @@ stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_a
 				stall_odd_raw = 0;
 			end
 
-			if(check_even_raw!=0) begin
+			if(reg_write == 1 &&
+					(
+						(rt_addr == ra_even_addr ) ||
+						(rt_addr == rb_even_addr ) ||
+						(rt_addr == rc_even_addr )
+					)
+				) begin
+					stall_even_raw = 1;
+					$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr);
+					$display("i=  %d addr rt_addr_delay %d ",0,rt_addr);
+			end
+			else if(check_even_raw!=0) begin
 				stall_even_raw =1 ;
 				$display("%s %d even ins hazard ",`__FILE__,`__LINE__);
 			end
