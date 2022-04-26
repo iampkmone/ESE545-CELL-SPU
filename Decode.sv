@@ -182,8 +182,8 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 			first_odd = 0;
 			first = check_one(0);
 			second = check_one(0);
-			instr_next[0] = NOP;
-			instr_next[1] = LNOP;
+			instr_next[0] = 0;
+			instr_next[1] = 0;
 			//finished_var = 0;
 		end
 		else begin
@@ -191,8 +191,8 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 				$display($time," New Decode: Branch taken, jumping to addr: %d", pc_wb);
 				stall_pc_var = pc_wb;
 				stall_var = 1;
-				instr_next[0] = NOP;
-				instr_next[1] = LNOP;
+				instr_next[0] = 0;
+				instr_next[1] = 0;
 				first = check_one(0);
 				second = check_one(0);
 				//finished_var = 0;					//If branch is taken right as program finishes, system must undo finished flag
@@ -343,12 +343,14 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 							for (int i = 0; i <= 5; i++) begin
 								if ((second.ra_addr == rt_addr_delay_fp1[i]) && (reg_write_delay_fp1[i] && int_delay_fp1[i])) begin
 									stall_second = 1;
+									$display($time," New Decode: RAW hazard found for second instr ra");
 								end
 								
 								if ((i < 5) &&
 									(((second.ra_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) ||
 									((second.ra_addr == rt_addr_delay_fp1[i]) && reg_write_delay_fp1[i]))) begin
 									stall_second = 1;
+									$display($time," New Decode: RAW hazard found for second instr ra");
 								end
 								
 								if ((i < 3) &&
@@ -356,33 +358,40 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 									((second.ra_addr == rt_addr_delay_b1[i]) && reg_write_delay_b1[i]) ||
 									((second.ra_addr == rt_addr_delay_p1[i]) && reg_write_delay_p1[i]))) begin
 									stall_second = 1;
+									$display($time," New Decode: RAW hazard found for second instr ra");
 								end
 								
 								if ((i < 1) &&
 									(second.ra_addr == rt_addr_delay_fx1[i]) && reg_write_delay_fx1[i]) begin
 									stall_second = 1;
+									$display($time," New Decode: RAW hazard found for second instr ra");
 								end
 							end
 							if ((second.ra_addr == rt_addr_delay_even) && reg_write_delay_even) begin
 								stall_second = 1;
+								$display($time," New Decode: RAW hazard found for second instr ra");
 							end
 							if ((second.ra_addr == rt_addr_delay_odd) && reg_write_delay_odd) begin
 								stall_second = 1;
+								$display($time," New Decode: RAW hazard found for second instr ra");
 							end
 							if ((second.ra_addr == first.rt_addr) && first.reg_write) begin
 								stall_second = 1;
+								$display($time," New Decode: RAW hazard found for second instr ra");
 							end
 						end
 						if (second.rb_valid) begin
 							for (int i = 0; i <= 5; i++) begin
 								if ((second.rb_addr == rt_addr_delay_fp1[i]) && (reg_write_delay_fp1[i] && int_delay_fp1[i])) begin
 									stall_second = 1;
+									$display($time," New Decode: RAW hazard found for second instr rb");
 								end
 								
 								if ((i < 5) &&
 									(((second.rb_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) ||
 									((second.rb_addr == rt_addr_delay_fp1[i]) && reg_write_delay_fp1[i]))) begin
 									stall_second = 1;
+									$display($time," New Decode: RAW hazard found for second instr rb");
 								end
 								
 								if ((i < 3) &&
@@ -390,33 +399,40 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 									((second.rb_addr == rt_addr_delay_b1[i]) && reg_write_delay_b1[i]) ||
 									((second.rb_addr == rt_addr_delay_p1[i]) && reg_write_delay_p1[i]))) begin
 									stall_second = 1;
+									$display($time," New Decode: RAW hazard found for second instr rb");
 								end
 								
 								if ((i < 1) &&
 									(second.rb_addr == rt_addr_delay_fx1[i]) && reg_write_delay_fx1[i]) begin
 									stall_second = 1;
+									$display($time," New Decode: RAW hazard found for second instr rb");
 								end
 							end
 							if ((second.rb_addr == rt_addr_delay_even) && reg_write_delay_even) begin
 								stall_second = 1;
+								$display($time," New Decode: RAW hazard found for second instr rb");
 							end
 							if ((second.rb_addr == rt_addr_delay_odd) && reg_write_delay_odd) begin
 								stall_second = 1;
+								$display($time," New Decode: RAW hazard found for second instr rb");
 							end
 							if ((second.rb_addr == first.rt_addr) && first.reg_write) begin
 								stall_second = 1;
+								$display($time," New Decode: RAW hazard found for second instr rb");
 							end
 						end
 						if (second.rc_valid) begin
 							for (int i = 0; i <= 5; i++) begin
 								if ((second.rc_addr == rt_addr_delay_fp1[i]) && (reg_write_delay_fp1[i] && int_delay_fp1[i])) begin
 									stall_second = 1;
+									$display($time," New Decode: RAW hazard found for second instr rc");
 								end
 								
 								if ((i < 5) &&
 									(((second.rc_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) ||
 									((second.rc_addr == rt_addr_delay_fp1[i]) && reg_write_delay_fp1[i]))) begin
 									stall_second = 1;
+									$display($time," New Decode: RAW hazard found for second instr rc");
 								end
 								
 								if ((i < 3) &&
@@ -424,25 +440,30 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 									((second.rc_addr == rt_addr_delay_b1[i]) && reg_write_delay_b1[i]) ||
 									((second.rc_addr == rt_addr_delay_p1[i]) && reg_write_delay_p1[i]))) begin
 									stall_second = 1;
+									$display($time," New Decode: RAW hazard found for second instr rc");
 								end
 								
 								if ((i < 1) &&
 									(second.rc_addr == rt_addr_delay_fx1[i]) && reg_write_delay_fx1[i]) begin
 									stall_second = 1;
+									$display($time," New Decode: RAW hazard found for second instr rc");
 								end
 							end
 							if ((second.rc_addr == rt_addr_delay_even) && reg_write_delay_even) begin
 								stall_second = 1;
+								$display($time," New Decode: RAW hazard found for second instr rc");
 							end
 							if ((second.rc_addr == rt_addr_delay_odd) && reg_write_delay_odd) begin
 								stall_second = 1;
+								$display($time," New Decode: RAW hazard found for second instr rc");
 							end
 							if ((second.rc_addr == first.rt_addr) && first.reg_write) begin
 								stall_second = 1;
+								$display($time," New Decode: RAW hazard found for second instr rc");
 							end
 						end
-						if (stall_second)
-							$display($time," New Decode: RAW hazard found for second instr");
+						//if (stall_second)
+							//$display($time," New Decode: RAW hazard found for second instr");
 					end
 				end
 				else begin
@@ -466,11 +487,14 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 					stall_var = 1;
 					instr_next[0] = instr_dec[1];
 					if (second.even_valid)
-						instr_next[1] = LNOP;
+						instr_next[1] = 0;
 					else
-						instr_next[1] = NOP;
+						instr_next[1] = 0;
 					second = check_one(0);
 					//finished_var = 0;
+				end
+				else begin
+					stall_var = 0;
 				end
 				
 				/*if (finished_var == 1) begin
