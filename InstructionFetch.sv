@@ -80,8 +80,8 @@ module IF(clk, reset, ins_cache, pc, read_enable);
                 // stall<=0;
                 instr_d[0]<=ins_cache[pc];
                 instr_d[1]<=ins_cache[pc+1];
-                $display($time," IF: ins %b ins %b pc %d pc_wb %d read_enable %d ",ins_cache[pc-pc_check], ins_cache[pc+1],pc,pc_wb, read_enable);
-                $display($time," IF: ins %h ins %h pc %d pc_wb %d read_enable %d ",ins_cache[pc-pc_check], ins_cache[pc+1],pc,pc_wb, read_enable);
+                $display($time," IF: ins %b ins %b pc %d pc_wb %d read_enable %d ",ins_cache[pc], ins_cache[pc+1],pc,pc_wb, read_enable);
+                $display($time," IF: ins %h ins %h pc %d pc_wb %d read_enable %d ",ins_cache[pc], ins_cache[pc+1],pc,pc_wb, read_enable);
 
 
                 $display($time," IF: ins %b ins %b pc %d pc_wb %d read_enable %d ",instr_d[0], instr_d[1],pc,pc_wb, read_enable);
@@ -98,8 +98,8 @@ module IF(clk, reset, ins_cache, pc, read_enable);
 				instr_d[0]<=ins_cache[pc];
                 instr_d[1]<=ins_cache[pc+1];
 				
-				instr_d[0]<=NOP;
-                instr_d[1]<=LNOP;
+				//instr_d[0]<=NOP;
+                //instr_d[1]<=LNOP;
                 
                 // $display($time," IF: reading in using pc_wb");
                 // $display($time," IF: ins %b ins %b pc %d pc_wb %d read_enable %d ",ins_cache[pc_wb], ins_cache[pc_wb+1],pc,pc_wb, read_enable);

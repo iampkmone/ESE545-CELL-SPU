@@ -1,5 +1,5 @@
 module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb, branch_taken, fw_wb, fw_addr_wb, fw_write_wb,
-	rt_addr_delay, reg_write_delay);
+	rt_addr_delay_fp1, reg_write_delay_fp1, rt_addr_delay_fx2, reg_write_delay_fx2, rt_addr_delay_b1, reg_write_delay_b1, rt_addr_delay_fx1, reg_write_delay_fx1);
 	input			clk, reset;
 	
 	//RF/FWD Stage
@@ -54,20 +54,17 @@ module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_writ
 	logic				fx1_write_out;	//Will rt_wb write to RegTable
 	
 	//Internal Signals for Handling RAW Hazards
-	output logic [6:0][0:6]	rt_addr_delay;			//Destination register for rt_wb
-	output logic [6:0]		reg_write_delay;		//Will rt_wb write to RegTable
+	output logic [6:0][0:6]	rt_addr_delay_fp1;		//Destination register for rt_wb
+	output logic [6:0]		reg_write_delay_fp1;	//Will rt_wb write to RegTable
 	
-	logic [6:0][0:6]	rt_addr_delay_fp1;		//Destination register for rt_wb
-	logic [6:0]			reg_write_delay_fp1;	//Will rt_wb write to RegTable
+	output logic [3:0][0:6]	rt_addr_delay_fx2;		//Destination register for rt_wb
+	output logic [3:0]		reg_write_delay_fx2;	//Will rt_wb write to RegTable
 	
-	logic [3:0][0:6]	rt_addr_delay_fx2;		//Destination register for rt_wb
-	logic [3:0]			reg_write_delay_fx2;	//Will rt_wb write to RegTable
+	output logic [3:0][0:6]	rt_addr_delay_b1;		//Destination register for rt_wb
+	output logic [3:0]		reg_write_delay_b1;		//Will rt_wb write to RegTable
 	
-	logic [3:0][0:6]	rt_addr_delay_b1;		//Destination register for rt_wb
-	logic [3:0]			reg_write_delay_b1;		//Will rt_wb write to RegTable
-	
-	logic [1:0][0:6]	rt_addr_delay_fx1;		//Destination register for rt_wb
-	logic [1:0]			reg_write_delay_fx1;	//Will rt_wb write to RegTable
+	output logic [1:0][0:6]	rt_addr_delay_fx1;		//Destination register for rt_wb
+	output logic [1:0]		reg_write_delay_fx1;	//Will rt_wb write to RegTable
 	
 	
 	SinglePrecision fp1(.clk(clk), .reset(reset), .op(fp1_op), .format(fp1_format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .rc(rc), .imm(imm), .reg_write(fp1_reg_write),
@@ -104,6 +101,11 @@ module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_writ
 		fx1_format = 0;
 		fx1_reg_write = 0;
 		
+		/*for (int i=0; i < 7; i++) begin
+			rt_addr_delay[i] = 0;
+			reg_write_delay[i] = 0;
+		end
+		
 		for (int i=0; i < 6; i++) begin
 			rt_addr_delay[i] = rt_addr_delay[i] | rt_addr_delay_fp1[i];
 			reg_write_delay[i] = rt_addr_delay[i] | reg_write_delay_fp1[i];
@@ -120,7 +122,7 @@ module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_writ
 		for (int i=0; i < 1; i++) begin
 			rt_addr_delay[i] = rt_addr_delay[i] | rt_addr_delay_fx1[i];
 			reg_write_delay[i] = rt_addr_delay[i] | reg_write_delay_fx1[i];
-		end
+		end*/
 		
 		
 		case (unit)									//Mux to determine which unit will take the instr
