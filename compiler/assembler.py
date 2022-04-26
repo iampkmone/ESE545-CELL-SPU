@@ -36,10 +36,10 @@ class Assembler:
                     self.opcode_ins_mapping[opcode]=[6,ins]
                 else:
                     if "nop" in ins:
+                        print("nop")
                         self.opcode_ins_mapping[opcode]=[7,ins]
                     elif "stop" in ins:
-                        break
-                        # self.opcode_ins_mapping[opcode]=[7,ins]
+                        self.opcode_ins_mapping[opcode]=[7,ins]
 
                 # #print(ins,opcode)
         # #print(self.opcode_ins_mapping)
@@ -55,9 +55,10 @@ class Assembler:
 
         with open(self.input_file,'r') as ins_lst, open(self.output_file,'w') as object:
             for line in ins_lst.readlines():
-
                 ins = self.parse_line(line)
                 memonic = ins[0]
+                if "stop" in memonic:
+                    break
                 #print(memonic)
                 opcode = self.ins_opcode_mapping[memonic]
                 #print(opcode)
@@ -69,11 +70,14 @@ class Assembler:
     def parse_input_1(self):
         with open(self.input_file,'r') as ins_lst, open(self.output_file,'w') as object,open("debug.out",'w') as d_object:
             for line in ins_lst.readlines():
+
                 ins = self.parse_line(line)
                 memonic = ins[0]
+                if "stop" in memonic:
+                    break
                 #print(memonic)
                 opcode = self.ins_opcode_mapping[memonic]
-                #print(opcode)
+                print(opcode)
                 format = self.opcode_ins_mapping[opcode]
                 # print("format ",format)
                 binary = self.compute(format,opcode,ins)
