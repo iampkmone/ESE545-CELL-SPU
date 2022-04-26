@@ -226,7 +226,7 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 				
 				
 				//$display($time," New Decode: Do I make it this far?");
-				if ((instr_dec[0] != NOP) && (instr_dec[0] != LNOP) && (instr_dec[0] != 0)) begin
+				if ((instr_dec[0] != 0)) begin //&& (instr_dec[0] != NOP) && (instr_dec[0] != LNOP)) begin
 					first = check_one(instr_dec[0]);	//Checking first instr
 					
 					if (first.ra_valid) begin
@@ -323,7 +323,7 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 						//finished_var = 1;
 				end
 				
-				if ((instr_dec[1] != NOP) && (instr_dec[1] != LNOP) && (instr_dec[1] != 0)) begin
+				if ((instr_dec[1] != 0)) begin //&& (instr_dec[1] != NOP) && (instr_dec[1] != LNOP)) begin
 					second = check_one(instr_dec[1]);
 					
 					if ((second.even_valid && first.even_valid) || (second.odd_valid && first.odd_valid)) begin		//Same pipe, structural hazard
