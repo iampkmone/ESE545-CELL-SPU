@@ -405,7 +405,7 @@ stall_state state;
 			`debug2("");
 			ra_odd_addr=7'h00;
 			rb_odd_addr=7'h00;
-
+			rc_odd_addr=7'h00;
 			is_ra_odd_valid=0;
 			is_rb_odd_valid=0;
 			is_rc_odd_valid=0;
@@ -415,6 +415,7 @@ stall_state state;
 			`debug2("");
 			ra_odd_addr=op.ra_odd_addr;
 			rb_odd_addr=op.rb_odd_addr;
+			rc_odd_addr=op.rc_odd_addr;
 			ra_even_addr=op.ra_even_addr;
 			rb_even_addr=op.rb_even_addr;
 			rc_even_addr=op.rc_even_addr;
@@ -435,7 +436,7 @@ stall_state state;
 		// state = check_for_hazard(tmp_op);
 		$display("%s ra_odd_addr %d  is_ra_odd_valid %d ",`__FILE__,ra_odd_addr,is_ra_odd_valid);
 		$display("%s rb_odd_addr %d  is_rb_odd_valid %d",`__FILE__,rb_odd_addr,is_rb_odd_valid);
-		$display("%s rc_odd_addr %d  is_rc_odd_valid %d ",`__FILE__,rb_odd_addr,is_rc_odd_valid);
+		$display("%s rc_odd_addr %d  is_rc_odd_valid %d ",`__FILE__,rc_odd_addr,is_rc_odd_valid);
 		$display("%s ra_even_addr %d is_ra_even_valid %d ",`__FILE__,ra_odd_addr, is_ra_even_valid);
 		$display("%s rb_even_addr %d is_rb_even_valid %d",`__FILE__,rb_even_addr, is_rb_even_valid);
 		$display("%s rc_even_addr %d is_rc_even_valid %d",`__FILE__,rc_even_addr, is_rc_even_valid);
@@ -1133,6 +1134,7 @@ stall_state state;
 		check.rt_addr_odd = odd[25:31];
 		check.ra_odd_addr = odd[11:17];
 		check.rb_odd_addr = odd[18:24];
+		check.rc_odd_addr = odd[25:31];
 
 		check.reg_write_odd = 1;
 		if (odd == 0) begin							//alternate lnop

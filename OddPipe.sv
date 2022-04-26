@@ -98,10 +98,15 @@ is_ra_odd_valid,is_rb_odd_valid,is_rc_odd_valid, is_ra_even_valid,is_rb_even_val
 		end
 
 		if(reset==1) begin
-			stall_odd_raw=1;
-			stall_even_raw=1;
+			stall_odd_raw=0;
+			stall_even_raw=0;
 			check_even_raw=0;
 			check_even_raw=0;
+			
+			for (int i=0; i<6; i=i+1) begin
+				rt_addr_delay[i] = 0;
+				reg_write_delay[i] = 0;
+			end
 		end
 		else begin
 			for(int i=0;i<5;i++) begin

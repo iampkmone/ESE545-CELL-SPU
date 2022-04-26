@@ -111,22 +111,19 @@ is_ra_odd_valid,is_rb_odd_valid,is_rc_odd_valid, is_ra_even_valid,is_rb_even_val
 		fx1_format = 0;
 		fx1_reg_write = 0;
 
-
-
-
 		if(reset==1) begin
-			stall_odd_raw=1;
-			stall_even_raw=1;
+			stall_odd_raw=0;
+			stall_even_raw=0;
 			check_odd_raw=0;
 			check_even_raw=0;
 
-			for (int i=0; i<6; i=i+1) begin
+			for (int i=0; i<7; i=i+1) begin
 				rt_addr_delay[i] = 0;
 				reg_write_delay[i] = 0;
 			end
 		end
 		else begin
-				for (int i=0; i < 6; i++) begin
+				for (int i=0; i < 7; i++) begin
 					rt_addr_delay[i] = rt_addr_delay[i] | rt_addr_delay_fp1[i];
 					reg_write_delay[i] = rt_addr_delay[i] | reg_write_delay_fp1[i];
 				end
