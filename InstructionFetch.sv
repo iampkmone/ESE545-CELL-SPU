@@ -80,10 +80,16 @@ module IF(clk, reset, ins_cache, pc, read_enable);
 					instr_d[1]<=ins_cache[pc_wb+1];
 				end
 				else begin
-					pc <= pc_wb;
+					pc <= pc_wb & ~1;
 					$display($time,"IF: pc update to pc_wb %d pc %d" ,pc_wb, pc);
-					instr_d[0]<=ins_cache[pc_wb-2];
-					instr_d[1]<=ins_cache[pc_wb-1];
+					if (pc_wb & 1) begin				// If branching to an odd number instr
+						instr_d[0]<=ins_cache[pc_wb-1];
+						instr_d[1]<=0;
+					end
+					else begin
+						instr_d[0]<=ins_cache[pc_wb-2];
+						instr_d[1]<=ins_cache[pc_wb-1];
+					end
 				end
 				
 				//instr_d[0]<=NOP;
