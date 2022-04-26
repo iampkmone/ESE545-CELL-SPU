@@ -42,6 +42,7 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 	
 	logic [6:0][0:6]	rt_addr_delay_fp1;		//Destination register for rt_wb
 	logic [6:0]			reg_write_delay_fp1;	//Will rt_wb write to RegTable
+	logic [6:0]			int_delay_fp1;			//Will fp1 write an int result
 	
 	logic [3:0][0:6]	rt_addr_delay_fx2;		//Destination register for rt_wb
 	logic [3:0]			reg_write_delay_fx2;	//Will rt_wb write to RegTable
@@ -83,13 +84,10 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
         .imm_even(imm_even), .imm_odd(imm_odd),
         .reg_write_even(reg_write_even), .reg_write_odd(reg_write_odd), .first_odd(first_odd_out), 
 		.rt_addr_delay_even(rt_addr_delay_even), .reg_write_delay_even(reg_write_delay_even), .rt_addr_delay_odd(rt_addr_delay_odd), .reg_write_delay_odd(reg_write_delay_odd),
-		.rt_addr_delay_fp1(rt_addr_delay_fp1), .reg_write_delay_fp1(reg_write_delay_fp1), .rt_addr_delay_fx2(rt_addr_delay_fx2), .reg_write_delay_fx2(reg_write_delay_fx2),
+		.rt_addr_delay_fp1(rt_addr_delay_fp1), .reg_write_delay_fp1(reg_write_delay_fp1), .int_delay_fp1(int_delay_fp1), .rt_addr_delay_fx2(rt_addr_delay_fx2), .reg_write_delay_fx2(reg_write_delay_fx2),
 		.rt_addr_delay_b1(rt_addr_delay_b1), .reg_write_delay_b1(reg_write_delay_b1), .rt_addr_delay_fx1(rt_addr_delay_fx1), .reg_write_delay_fx1(reg_write_delay_fx1),
 		.rt_addr_delay_p1(rt_addr_delay_p1), .reg_write_delay_p1(reg_write_delay_p1), .rt_addr_delay_ls1(rt_addr_delay_ls1), .reg_write_delay_ls1(reg_write_delay_ls1)
         );
-
-	// TODO : Set rs_valid_even/odd for special case instr that read from rt, don't read ra, etc
-
 
 	always_ff @( posedge clk ) begin : decode_op
 	
@@ -231,11 +229,13 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 					
 					if (first.ra_valid) begin
 						for (int i = 0; i <= 5; i++) begin
-							if ((first.ra_addr == rt_addr_delay_fp1[i]) && reg_write_delay_fp1[i]) begin
+							if ((first.ra_addr == rt_addr_delay_fp1[i]) && (reg_write_delay_fp1[i] && int_delay_fp1[i])) begin
 								stall_first = 1;
 							end
 							
-							if ((i < 5) && (first.ra_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) begin
+							if ((i < 5) &&
+								(((first.ra_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) ||
+								((first.ra_addr == rt_addr_delay_fp1[i]) && reg_write_delay_fp1[i]))) begin
 								stall_first = 1;
 							end
 							
@@ -260,11 +260,13 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 					end
 					if (first.rb_valid) begin
 						for (int i = 0; i <= 5; i++) begin
-							if ((first.rb_addr == rt_addr_delay_fp1[i]) && reg_write_delay_fp1[i]) begin
+							if ((first.rb_addr == rt_addr_delay_fp1[i]) && (reg_write_delay_fp1[i] && int_delay_fp1[i])) begin
 								stall_first = 1;
 							end
 							
-							if ((i < 5) && (first.rb_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) begin
+							if ((i < 5) &&
+								(((first.rb_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) ||
+								((first.rb_addr == rt_addr_delay_fp1[i]) && reg_write_delay_fp1[i]))) begin
 								stall_first = 1;
 							end
 							
@@ -289,11 +291,13 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 					end
 					if (first.rc_valid) begin
 						for (int i = 0; i <= 5; i++) begin
-							if ((first.rc_addr == rt_addr_delay_fp1[i]) && reg_write_delay_fp1[i]) begin
+							if ((first.rc_addr == rt_addr_delay_fp1[i]) && (reg_write_delay_fp1[i] && int_delay_fp1[i])) begin
 								stall_first = 1;
 							end
 							
-							if ((i < 5) && (first.rc_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) begin
+							if ((i < 5) &&
+								(((first.rc_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) ||
+								((first.rc_addr == rt_addr_delay_fp1[i]) && reg_write_delay_fp1[i]))) begin
 								stall_first = 1;
 							end
 							
@@ -337,11 +341,13 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 					else begin
 						if (second.ra_valid) begin
 							for (int i = 0; i <= 5; i++) begin
-								if ((second.ra_addr == rt_addr_delay_fp1[i]) && reg_write_delay_fp1[i]) begin
+								if ((second.ra_addr == rt_addr_delay_fp1[i]) && (reg_write_delay_fp1[i] && int_delay_fp1[i])) begin
 									stall_second = 1;
 								end
 								
-								if ((i < 5) && (second.ra_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) begin
+								if ((i < 5) &&
+									(((second.ra_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) ||
+									((second.ra_addr == rt_addr_delay_fp1[i]) && reg_write_delay_fp1[i]))) begin
 									stall_second = 1;
 								end
 								
@@ -369,11 +375,13 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 						end
 						if (second.rb_valid) begin
 							for (int i = 0; i <= 5; i++) begin
-								if ((second.rb_addr == rt_addr_delay_fp1[i]) && reg_write_delay_fp1[i]) begin
+								if ((second.rb_addr == rt_addr_delay_fp1[i]) && (reg_write_delay_fp1[i] && int_delay_fp1[i])) begin
 									stall_second = 1;
 								end
 								
-								if ((i < 5) && (second.rb_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) begin
+								if ((i < 5) &&
+									(((second.rb_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) ||
+									((second.rb_addr == rt_addr_delay_fp1[i]) && reg_write_delay_fp1[i]))) begin
 									stall_second = 1;
 								end
 								
@@ -401,11 +409,13 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 						end
 						if (second.rc_valid) begin
 							for (int i = 0; i <= 5; i++) begin
-								if ((second.rc_addr == rt_addr_delay_fp1[i]) && reg_write_delay_fp1[i]) begin
+								if ((second.rc_addr == rt_addr_delay_fp1[i]) && (reg_write_delay_fp1[i] && int_delay_fp1[i])) begin
 									stall_second = 1;
 								end
 								
-								if ((i < 5) && (second.rc_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) begin
+								if ((i < 5) &&
+									(((second.rc_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) ||
+									((second.rc_addr == rt_addr_delay_fp1[i]) && reg_write_delay_fp1[i]))) begin
 									stall_second = 1;
 								end
 								

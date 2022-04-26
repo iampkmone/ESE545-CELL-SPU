@@ -1,5 +1,5 @@
 module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb, branch_taken, fw_wb, fw_addr_wb, fw_write_wb,
-	rt_addr_delay_fp1, reg_write_delay_fp1, rt_addr_delay_fx2, reg_write_delay_fx2, rt_addr_delay_b1, reg_write_delay_b1, rt_addr_delay_fx1, reg_write_delay_fx1);
+	rt_addr_delay_fp1, reg_write_delay_fp1, int_delay_fp1, rt_addr_delay_fx2, reg_write_delay_fx2, rt_addr_delay_b1, reg_write_delay_b1, rt_addr_delay_fx1, reg_write_delay_fx1);
 	input			clk, reset;
 	
 	//RF/FWD Stage
@@ -56,6 +56,7 @@ module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_writ
 	//Internal Signals for Handling RAW Hazards
 	output logic [6:0][0:6]	rt_addr_delay_fp1;		//Destination register for rt_wb
 	output logic [6:0]		reg_write_delay_fp1;	//Will rt_wb write to RegTable
+	output logic [6:0]		int_delay_fp1;			//Will fp1 write an int result
 	
 	output logic [3:0][0:6]	rt_addr_delay_fx2;		//Destination register for rt_wb
 	output logic [3:0]		reg_write_delay_fx2;	//Will rt_wb write to RegTable
@@ -69,7 +70,7 @@ module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_writ
 	
 	SinglePrecision fp1(.clk(clk), .reset(reset), .op(fp1_op), .format(fp1_format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .rc(rc), .imm(imm), .reg_write(fp1_reg_write),
 		.rt_wb(fp1_out), .rt_addr_wb(fp1_addr_out), .reg_write_wb(fp1_write_out), .rt_int(fp1_int), .rt_addr_int(fp1_addr_int), .reg_write_int(fp1_write_int),
-		.branch_taken(branch_taken), .rt_addr_delay(rt_addr_delay_fp1), .reg_write_delay(reg_write_delay_fp1));
+		.branch_taken(branch_taken), .rt_addr_delay(rt_addr_delay_fp1), .reg_write_delay(reg_write_delay_fp1), .int_delay(int_delay_fp1));
 
 	SimpleFixed2 fx2(.clk(clk), .reset(reset), .op(fx2_op), .format(fx2_format), .rt_addr(rt_addr), .ra(ra), .rb(rb), .imm(imm), .reg_write(fx2_reg_write), .rt_wb(fx2_out),
 		.rt_addr_wb(fx2_addr_out), .reg_write_wb(fx2_write_out), .branch_taken(branch_taken),
