@@ -79,7 +79,8 @@ class Assembler:
                 binary = self.compute(format,opcode,ins)
                 object.write(binary+"\n")
                 if self.debug_level==2:
-                    d_object.write(str(binary)+" "+hex(int(binary,2))+"\t"+line)
+                    o_hex = '0x{0:0{1}X}'.format(int(binary,2),8)
+                    d_object.write(str(binary)+" "+o_hex+"\t"+line)
                 else:
                     d_object.write(line+"\t"+str(binary)+"\n")
 
