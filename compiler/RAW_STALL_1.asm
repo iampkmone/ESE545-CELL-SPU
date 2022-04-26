@@ -8,10 +8,10 @@ shl 80 11 5
 shlqby 1 81 8
 shl 89 11 5
 shlqby 1 80 8
-ila 25 2
+ila 25 3
 ila 26 0
 ai 25 25 -1
 ai 26 26 1
-brnz 25 14
+brnz 25 12
 lnop
 stop

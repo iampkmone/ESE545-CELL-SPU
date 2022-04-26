@@ -187,7 +187,7 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 		else begin
 			if (branch_taken == 1) begin
 				$display($time," New Decode: Branch taken, jumping to addr: %d", pc_wb);
-				stall_pc_var = pc_wb;
+				stall_pc_var = pc_wb+2;
 				stall_var = 1;
 				instr_next[0] = 0;
 				instr_next[1] = 0;
