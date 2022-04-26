@@ -166,21 +166,14 @@ module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_writ
 			end
 		end
 		else begin
-			if (fp1_write_int == 1) begin			//Replace output with fp1 integer if possible
-				rt_wb <= fp1_int;
-				rt_addr_wb <= fp1_addr_int;
-				reg_write_wb <= fp1_write_int;
-			end
-			else begin
-				rt_wb <= fw_wb[6];
-				rt_addr_wb <= fw_addr_wb[6];
-				reg_write_wb <= fw_write_wb[6];
-			end
+			rt_wb <= fw_wb[6];
+			rt_addr_wb <= fw_addr_wb[6];
+			reg_write_wb <= fw_write_wb[6];
 			
-			if (fp1_write_out == 1) begin			//Replace fw6 with fp1 if possible
+			if (fp1_write_int == 1) begin			//Replace fw6 with fp1 if possible
 				fw_wb[6] <= fp1_out;
 				fw_addr_wb[6] <= fp1_addr_out;
-				fw_write_wb[6] <= fp1_write_out;
+				fw_write_wb[6] <= fp1_write_int;
 			end
 			else begin
 				fw_wb[6] <= fw_wb[5];
@@ -188,44 +181,51 @@ module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_writ
 				fw_write_wb[6] <= fw_write_wb[5];
 			end
 			
-			fw_wb[5] <= fw_wb[4];
-			fw_addr_wb[5] <= fw_addr_wb[4];
-			fw_write_wb[5] <= fw_write_wb[4];
+			if (fp1_write_out == 1) begin			//Replace fw6 with fp1 if possible
+				fw_wb[5] <= fp1_out;
+				fw_addr_wb[5] <= fp1_addr_out;
+				fw_write_wb[5] <= fp1_write_out;
+			end
+			else begin
+				fw_wb[5] <= fw_wb[4];
+				fw_addr_wb[5] <= fw_addr_wb[4];
+				fw_write_wb[5] <= fw_write_wb[4];
+			end
+			
+			fw_wb[4] <= fw_wb[3];
+			fw_addr_wb[4] <= fw_addr_wb[3];
+			fw_write_wb[4] <= fw_write_wb[3];
 			
 			if (fx2_write_out == 1) begin			//Replace fw4 with fx2 if possible
-				fw_wb[4] <= fx2_out;
-				fw_addr_wb[4] <= fx2_addr_out;
-				fw_write_wb[4] <= fx2_write_out;
+				fw_wb[3] <= fx2_out;
+				fw_addr_wb[3] <= fx2_addr_out;
+				fw_write_wb[3] <= fx2_write_out;
 			end
 			else if (b1_write_out == 1) begin		//Replace fw4 with b1 if possible
-				fw_wb[4] <= b1_out;
-				fw_addr_wb[4] <= b1_addr_out;
-				fw_write_wb[4] <= b1_write_out;
+				fw_wb[3] <= b1_out;
+				fw_addr_wb[3] <= b1_addr_out;
+				fw_write_wb[3] <= b1_write_out;
 			end
 			else begin
-				fw_wb[4] <= fw_wb[3];
-				fw_addr_wb[4] <= fw_addr_wb[3];
-				fw_write_wb[4] <= fw_write_wb[3];
+				fw_wb[3] <= fw_wb[2];
+				fw_addr_wb[3] <= fw_addr_wb[2];
+				fw_write_wb[3] <= fw_write_wb[2];
 			end
 			
-			fw_wb[3] <= fw_wb[2];
-			fw_addr_wb[3] <= fw_addr_wb[2];
-			fw_write_wb[3] <= fw_write_wb[2];
+			fw_wb[2] <= fw_wb[1];
+			fw_addr_wb[2] <= fw_addr_wb[1];
+			fw_write_wb[2] <= fw_write_wb[1];
 			
 			if (fx1_write_out == 1) begin			//Replace fw2 with fx1 if possible
-				fw_wb[2] <= fx1_out;
-				fw_addr_wb[2] <= fx1_addr_out;
-				fw_write_wb[2] <= fx1_write_out;
+				fw_wb[1] <= fx1_out;
+				fw_addr_wb[1] <= fx1_addr_out;
+				fw_write_wb[1] <= fx1_write_out;
 			end
 			else begin
-				fw_wb[2] <= fw_wb[1];
-				fw_addr_wb[2] <= fw_addr_wb[1];
-				fw_write_wb[2] <= fw_write_wb[1];
+				fw_wb[1] <= fw_wb[0];
+				fw_addr_wb[1] <= fw_addr_wb[0];
+				fw_write_wb[1] <= fw_write_wb[0];
 			end
-			
-			fw_wb[1] <= fw_wb[0];
-			fw_addr_wb[1] <= fw_addr_wb[0];
-			fw_write_wb[1] <= fw_write_wb[0];
 		end
 	end
 	

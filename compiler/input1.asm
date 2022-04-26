@@ -26,8 +26,6 @@ mpy 8 6 7
 rotqbi 14 4 1
 mpy 11 9 10
 rotqbi 15 4 3
-mpy 14 22 23
-rotqbi 16 4 4
 mpy 17 25 26
 rotqbi 15 4 2	//Forwarding without stalling
 stop			//Stop instr ignores all following instr and ends program

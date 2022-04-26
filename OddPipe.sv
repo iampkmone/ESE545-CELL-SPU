@@ -76,21 +76,6 @@ module OddPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rt_st, imm, reg_wr
 		br1_format = 0;
 		br1_reg_write = 0;
 		
-		/*for (int i=0; i < 7; i++) begin
-			rt_addr_delay[i] = 0;
-			reg_write_delay[i] = 0;
-		end
-		
-		for (int i=0; i < 5; i++) begin
-			rt_addr_delay[i] = rt_addr_delay[i] | rt_addr_delay_ls1[i];
-			reg_write_delay[i] = rt_addr_delay[i] | reg_write_delay_ls1[i];
-		end
-		
-		for (int i=0; i < 3; i++) begin
-			rt_addr_delay[i] = rt_addr_delay[i] | rt_addr_delay_p1[i];
-			reg_write_delay[i] = rt_addr_delay[i] | reg_write_delay_p1[i];
-		end*/
-		
 		case (unit)									//Mux to determine which unit will take the instr
 			2'b00 : begin							//Instr going to p1
 				p1_op = op;
@@ -116,9 +101,9 @@ module OddPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rt_st, imm, reg_wr
 	end
 	
 	always_ff @(posedge clk) begin
-		fw_wb[0] <= 0;								//fw0 doesn't exist, just use 0
-		fw_addr_wb[0] <= 0;
-		fw_write_wb[0] <= 0;
+		//fw_wb[0] <= 0;								//fw0 doesn't exist, just use 0
+		//fw_addr_wb[0] <= 0;
+		//fw_write_wb[0] <= 0;
 		
 		if (reset == 1) begin
 			rt_wb = 0;
@@ -135,49 +120,53 @@ module OddPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rt_st, imm, reg_wr
 			rt_addr_wb <= fw_addr_wb[6];
 			reg_write_wb <= fw_write_wb[6];
 			
+			fw_wb[6] <= fw_wb[5];
+			fw_addr_wb[6] <= fw_addr_wb[5];
+			fw_write_wb[6] <= fw_write_wb[5];
+			
 			if (ls1_write_out == 1) begin			//Replace fw6 with ls1 if possible
-				fw_wb[6] <= ls1_out;
-				fw_addr_wb[6] <= ls1_addr_out;
-				fw_write_wb[6] <= ls1_write_out;
+				fw_wb[5] <= ls1_out;
+				fw_addr_wb[5] <= ls1_addr_out;
+				fw_write_wb[5] <= ls1_write_out;
 			end
 			else begin
-				fw_wb[6] <= fw_wb[5];
-				fw_addr_wb[6] <= fw_addr_wb[5];
-				fw_write_wb[6] <= fw_write_wb[5];
+				fw_wb[5] <= fw_wb[4];
+				fw_addr_wb[5] <= fw_addr_wb[4];
+				fw_write_wb[5] <= fw_write_wb[4];
 			end
 			
-			fw_wb[5] <= fw_wb[4];
-			fw_addr_wb[5] <= fw_addr_wb[4];
-			fw_write_wb[5] <= fw_write_wb[4];
+			fw_wb[4] <= fw_wb[3];
+			fw_addr_wb[4] <= fw_addr_wb[3];
+			fw_write_wb[4] <= fw_write_wb[3];
 			
 			if (p1_write_out == 1) begin			//Replace fw4 with p1 if possible
-				fw_wb[4] <= p1_out;
-				fw_addr_wb[4] <= p1_addr_out;
-				fw_write_wb[4] <= p1_write_out;
+				fw_wb[3] <= p1_out;
+				fw_addr_wb[3] <= p1_addr_out;
+				fw_write_wb[3] <= p1_write_out;
 			end
 			else begin
-				fw_wb[4] <= fw_wb[3];
-				fw_addr_wb[4] <= fw_addr_wb[3];
-				fw_write_wb[4] <= fw_write_wb[3];
+				fw_wb[3] <= fw_wb[2];
+				fw_addr_wb[3] <= fw_addr_wb[2];
+				fw_write_wb[3] <= fw_write_wb[2];
 			end
 			
 			fw_wb[2] <= fw_wb[1];
 			fw_addr_wb[2] <= fw_addr_wb[1];
 			fw_write_wb[2] <= fw_write_wb[1];
 			
-			fw_wb[3] <= fw_wb[2];
-			fw_addr_wb[3] <= fw_addr_wb[2];
-			fw_write_wb[3] <= fw_write_wb[2];
+			fw_wb[1] <= fw_wb[0];
+			fw_addr_wb[1] <= fw_addr_wb[0];
+			fw_write_wb[1] <= fw_write_wb[0];
 			
 			if (br1_write_out == 1) begin			//Replace fw1 with p1 if possible (??????)
-				fw_wb[1] <= br1_out;
-				fw_addr_wb[1] <= br1_addr_out;
-				fw_write_wb[1] <= br1_write_out;
+				fw_wb[0] <= br1_out;
+				fw_addr_wb[0] <= br1_addr_out;
+				fw_write_wb[0] <= br1_write_out;
 			end
 			else begin
-				fw_wb[1] <= fw_wb[0];
-				fw_addr_wb[1] <= fw_addr_wb[0];
-				fw_write_wb[1] <= fw_write_wb[0];
+				fw_wb[0] <= 0;
+				fw_addr_wb[0] <= 0;
+				fw_write_wb[0] <= 0;
 			end
 		end
 	end

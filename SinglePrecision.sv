@@ -27,10 +27,10 @@ module SinglePrecision(clk, reset, op, format, rt_addr, ra, rb, rc, imm, reg_wri
 	output logic [6:0]		int_delay;			//1 if int op, 0 if else
 	
 	always_comb begin
-		if (int_delay[6] == 1) begin			//FP7 writeback (only for int ops)
-			rt_int = rt_delay[6];
-			rt_addr_int = rt_addr_delay[6];
-			reg_write_int = reg_write_delay[6];
+		if (int_delay[5] == 1) begin			//FP7 writeback (only for int ops)
+			rt_int = rt_delay[5];
+			rt_addr_int = rt_addr_delay[5];
+			reg_write_int = reg_write_delay[5];
 		end
 		else begin
 			rt_int = 0;
@@ -38,10 +38,10 @@ module SinglePrecision(clk, reset, op, format, rt_addr, ra, rb, rc, imm, reg_wri
 			reg_write_int = 0;
 		end
 		
-		if (int_delay[5] == 0) begin			//FP6 writeback
-			rt_wb = rt_delay[5];
-			rt_addr_wb = rt_addr_delay[5];
-			reg_write_wb = reg_write_delay[5];
+		if (int_delay[4] == 0) begin			//FP6 writeback
+			rt_wb = rt_delay[4];
+			rt_addr_wb = rt_addr_delay[4];
+			reg_write_wb = reg_write_delay[4];
 		end
 		else begin
 			rt_wb = 0;

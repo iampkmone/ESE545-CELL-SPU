@@ -31,9 +31,9 @@ module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_wri
 	logic [0:128] tmp;
 
 	always_comb begin
-		rt_wb = rt_delay[1];
-		rt_addr_wb = rt_addr_delay[1];
-		reg_write_wb = reg_write_delay[1];
+		rt_wb = rt_delay[0];
+		rt_addr_wb = rt_addr_delay[0];
+		reg_write_wb = reg_write_delay[0];
 	end
 
 	always_ff @(posedge clk) begin

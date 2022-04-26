@@ -23,9 +23,9 @@ module LocalStore(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_write
 	logic [0:127] mem [0:2047];				//32KB local memory
 	
 	always_comb begin
-		rt_wb = rt_delay[5];
-		rt_addr_wb = rt_addr_delay[5];
-		reg_write_wb = reg_write_delay[5];
+		rt_wb = rt_delay[4];
+		rt_addr_wb = rt_addr_delay[4];
+		reg_write_wb = reg_write_delay[4];
 	end
 	
 	always_ff @(posedge clk) begin
