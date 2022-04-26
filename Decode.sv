@@ -372,37 +372,49 @@ stall_state state;
 			`debug2("");
 		end
 
-		`debug2("");
-		if(state.mask==5'b11000) begin
+
+		// raw_hazard==1 is added because
+		// change in ra_even triggered no-op on push from 2nd comb block which should happend only after we have processed first set of ins
+
+		if(raw_hazard==1 && state.mask==5'b11000) begin
 			`debug2("");
 			ra_even_addr=7'h00;
 			rb_even_addr=7'h00;
 			rc_even_addr=7'h00;
+			is_ra_even_valid=0;
+			is_rb_even_valid=0;
+			is_rc_even_valid=0;
 		end
-		else if(state.mask == 5'b01000) begin
+		else if(raw_hazard==1 && state.mask == 5'b01000) begin
 			`debug2("");
 			ra_odd_addr=7'h00;
 			rb_odd_addr=7'h00;
+
+			is_ra_odd_valid=0;
+			is_rb_odd_valid=0;
+			is_rc_odd_valid=0;
+
 		end
-		else if(raw_hazard==0) begin
+		else if(raw_hazard==0 && state.mask==0) begin
 			`debug2("");
 			ra_odd_addr=op.ra_odd_addr;
 			rb_odd_addr=op.rb_odd_addr;
 			ra_even_addr=op.ra_even_addr;
 			rb_even_addr=op.rb_even_addr;
 			rc_even_addr=op.rc_even_addr;
+			is_ra_even_valid=op.is_ra_even_valid;
+			is_rb_even_valid=op.is_rb_even_valid;
+			is_rc_even_valid=op.is_rc_even_valid;
+
+			is_ra_odd_valid=op.is_ra_odd_valid;
+			is_rb_odd_valid=op.is_rb_odd_valid;
+			is_rc_odd_valid=op.is_rc_odd_valid;
+
 			tmp_op =  op;
 		end
 		else begin
 			`debug2("");
 		end
-		is_ra_even_valid=op.is_ra_even_valid;
-		is_rb_even_valid=op.is_rb_even_valid;
-		is_rc_even_valid=op.is_rc_even_valid;
-
-		is_ra_odd_valid=op.is_ra_odd_valid;
-		is_rb_odd_valid=op.is_rb_odd_valid;
-		is_rc_odd_valid=op.is_rc_odd_valid;
 
 		// state = check_for_hazard(tmp_op);
 		$display("%s ra_odd_addr %d  is_ra_odd_valid %d ",`__FILE__,ra_odd_addr,is_ra_odd_valid);
@@ -431,6 +443,8 @@ stall_state state;
 			end
 		end
 		$display($time," Decode: pc %d  pc_wb %d stall %d stall_pc %d ",pc, pc_wb, stall, stall_pc );
+
+
     end
 
 	always_comb begin : RAW_HAZARD
@@ -440,8 +454,16 @@ stall_state state;
 			state.mask=5'h00;
 		end
 		else begin
+			`debug2("");
 			$display("stall_odd_raw %b stall_even_raw %d state.mask %b",stall_odd_raw,stall_even_raw,state.mask);
-
+			$display($time," Decode: instr_even %b instr_odd %b ",state.final_op.instr_even, state.final_op.instr_odd);
+			$display($time," Decode: op_even %b op_odd %b ",state.final_op.op_even, state.final_op.op_odd);
+			$display($time," Decode: reg_write_even %b reg_write_odd %b ",state.final_op.reg_write_even, state.final_op.reg_write_odd);
+			$display($time," Decode: imm_even %b imm_odd %b ",state.final_op.imm_even, state.final_op.imm_odd);
+			$display($time," Decode: rt_addr_even %b rt_addr_odd %b ",state.final_op.rt_addr_even, state.final_op.rt_addr_odd);
+			$display($time," Decode: unit_even %d unit_odd %d ",state.final_op.unit_even, state.final_op.unit_odd);
+			$display($time," Decode: format_even %d format_odd %d ",state.final_op.format_even, state.final_op.format_odd);
+			`debug2("");
 			if( (stall_odd_raw|stall_even_raw)>0 && state.mask==0) begin
 				`debug2("");
 				if(both_even==1) begin
@@ -542,8 +564,9 @@ stall_state state;
 								`debug2("2nd odd ins store");
 							end
 							else begin
-								state.instr_odd_issue= instr[1];
 								state.instr_even_issue=32'h0000;
+								state.instr_odd_issue= instr[1];
+
 								`debug2("stalling 2nd ins");
 							end
 
@@ -567,8 +590,11 @@ stall_state state;
 				end
 				else if(state.mask ==  5'b11000 || state.mask == 5'b01000 || state.mask == 5'b00011) begin
 					`debug2("");
+					if(raw_hazard==1) begin
 					// continue to stall
-					state.final_op=check(32'h0000,32'h0000);
+						`debug2("");
+						state.final_op=check(32'h0000,32'h0000);
+					end
 				end
 				else begin
 					if(state.mask==0) begin

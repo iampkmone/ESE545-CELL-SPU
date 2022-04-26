@@ -1,5 +1,4 @@
-module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb, branch_taken,
-stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_addr, rc_even_addr);
+module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb, branch_taken, rt_addr_delay, reg_write_delay);
 	input			clk, reset;
 
 	//RF/FWD Stage
@@ -18,8 +17,8 @@ stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_a
 
 	//Internal Signals
 	logic [1:0][0:127]	rt_delay;			//Staging register for calculated values
-	logic [1:0][0:6]	rt_addr_delay;		//Destination register for rt_wb
-	logic [1:0]			reg_write_delay;	//Will rt_wb write to RegTable
+	output logic [1:0][0:6]	rt_addr_delay;		//Destination register for rt_wb
+	output logic [1:0]			reg_write_delay;	//Will rt_wb write to RegTable
 
 	logic [6:0]		i;				//7-bit counter for loops
 	logic signed [31:0] max_value_32 = 32'h7FFFFFFF;
@@ -30,51 +29,13 @@ stall_odd_raw, ra_odd_addr, rb_odd_addr, stall_even_raw, ra_even_addr, rb_even_a
 	logic signed [15:0] min_value_16 = 16'h8000;
 	logic signed [0:31] mask =1<<31;
 
-	input logic [0:7] ra_odd_addr,rb_odd_addr;
-	input logic [0:7] ra_even_addr,rb_even_addr,rc_even_addr;
-	output logic stall_odd_raw,stall_even_raw;
-
 
 	logic [0:128] tmp;
-
-	// TODO : Implement all instr
 
 	always_comb begin
 		rt_wb = rt_delay[1];
 		rt_addr_wb = rt_addr_delay[1];
 		reg_write_wb = reg_write_delay[1];
-
-		if(reset) begin
-			stall_even_raw = 0;
-			stall_odd_raw = 0;
-		end
-		else begin
-			for(int i=0;i<1;i++) begin
-				if(reg_write_delay[i] == 1 &&
-					(
-						(rt_addr_delay[i] == ra_odd_addr ) ||
-						(rt_addr_delay[i] == rb_odd_addr )
-					)
-				) begin
-					stall_odd_raw = 1;
-					$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr_delay[i]);
-					$display("i=  %d addr rt_addr_delay %d ",i,rt_addr_delay[i]);
-				end
-				if(reg_write_delay[i] == 1 &&
-					(
-						(rt_addr_delay[i] == ra_even_addr ) ||
-						(rt_addr_delay[i] == rb_even_addr ) ||
-						(rt_addr_delay[i] == rc_even_addr )
-					)
-				) begin
-					stall_even_raw = 1;
-					$display("%s %d RAW hazard found addr %d ",`__FILE__,`__LINE__,rt_addr_delay[i]);
-					$display("i=  %d addr rt_addr_delay %d ",i,rt_addr_delay[i]);
-				end
-			end
-		end
-
-
 	end
 
 	always_ff @(posedge clk) begin
