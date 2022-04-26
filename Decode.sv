@@ -1,7 +1,7 @@
 module Decode(clk, reset, instr, pc, stall_pc, stall);
     input logic			clk, reset;
     input logic [0:31] 	instr[0:1];
-	logic [0:31] 		instr_next[0:1], instr_dec[0:1];
+	logic [0:31] 		instr_next[0:1], instr_dec[0:1], instr_next_reg[0:1];
 
 	logic [0:31]	instr_even, instr_odd, instr_odd_issue, instr_even_issue;	//Instr from decoder
 	
@@ -12,6 +12,7 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 	logic				branch_taken;							//Was branch taken?
 	logic				first_odd, first_odd_out;				//1 if odd instr is first in pair, 0 else; Used for branch flushing
 	logic			 	stall_var;
+	logic [7:0]			stall_pc_var;
 
     input logic[7:0] pc;                           // PC for the current state
 
@@ -24,7 +25,7 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 	logic [0:17]	imm_even, imm_odd;						//Full possible immediate value (used with format)
 	logic			reg_write_even, reg_write_odd;			//1 if instr will write to rt, else 0
 	
-	logic 			finished;								//Flag signalling end of program. System will not issue new instr when finished
+	logic 			finished, finished_var;					//Flag signalling end of program. System will not issue new instr when finished
 	logic			first_cyc;								//Due to how finished is detected, workaround is needed to prevent flag after reset
 	
 	localparam [0:31] NOP = 32'b01000000001000000000000000000000;
@@ -34,7 +35,7 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 	logic [7:0][0:6]	rt_addr_delay_even, rt_addr_delay_odd;		//Destination register for rt_wb
 	logic [7:0]			reg_write_delay_even, reg_write_delay_odd;	//Will rt_wb write to RegTable
 	logic 				stall_first_raw, stall_second_raw;			// 1 if respective signal is to be stalled due to RAW hazard
-	//logic 				stall_first, stall_second;			// 1 if respective signal is to be stalled due to RAW or structural hazard
+	logic 				stall_first, stall_second;			// 1 if respective signal is to be stalled due to RAW or structural hazard
 
 	typedef struct { 
 		logic [0:31]	instr_even, instr_odd;	
@@ -140,6 +141,10 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 			format_odd <= 0;
 		end
 		
+		instr_next_reg <= instr_next;
+		stall <= stall_var;
+		stall_pc <= stall_pc_var;
+		finished <= finished_var;
 		
 		
 		/*instr_even <= op.instr_even;
@@ -175,61 +180,63 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 	
 	//Decode logic
 	always_comb begin
-		logic stall_first;
-		logic stall_second;
+		//logic stall_first;
+		//logic stall_second;
 		
 		stall_first = 0;
 		stall_second = 0;
+		finished_var = 0;
 	
+		$display("=======================================");
 		$display($time," New Decode: Sensitivity list");
 		$display("pc: %d, reset: %b, branch_taken: %b, finished: %b, stall: %b", pc, reset, branch_taken, finished, stall);
-		$display("instr_next[0]: %b, instr_next[1]: %b, ", instr_next[0], instr_next[1]);
-		$display("instr[0]:      %b, instr[1]:      %b", instr[0], instr[1]);
+		$display("instr_next[0]: 		%b, instr_next[1]: 		%b, ", instr_next[0], instr_next[1]);
+		$display("instr_next_reg[0]: 	%b, instr_next_reg[1]: 	%b, ", instr_next_reg[0], instr_next_reg[1]);
+		$display("instr[0]:      		%b, instr[1]:      		%b", instr[0], instr[1]);
+		$display("=======================================");
 		
 		if (reset == 1) begin
-			stall = 0;
-			stall_pc = 0;
+			stall_var = 0;
+			stall_pc_var = 0;
 			first_odd = 0;
 			first = check_one(0);
 			second = check_one(0);
-			instr_next[0] = 0;
-			instr_next[1] = 0;
-			//finished = 0;
+			instr_next[0] = NOP;
+			instr_next[1] = LNOP;
+			finished_var = 0;
 		end
 		else begin
 			if (branch_taken == 1) begin
-				stall_pc = pc_wb;
-				stall = 1;
-				instr_next[0] = 0;
-				instr_next[1] = 0;
+				stall_pc_var = pc_wb;
+				stall_var = 1;
+				instr_next[0] = NOP;
+				instr_next[1] = LNOP;
 				first = check_one(0);
 				second = check_one(0);
-				//finished = 0;					//If branch is taken right as program finishes, system must undo finished flag
+				finished_var = 0;					//If branch is taken right as program finishes, system must undo finished flag
 			end
 			else if (finished) begin			//If program is finished, do not issue any more instr
-				instr_next[0] = 0;
-				instr_next[1] = 0;
-				stall = 0;
-				stall_pc = 0;
+				instr_next[0] = NOP;
+				instr_next[1] = LNOP;
+				stall_var = 0;
+				stall_pc_var = 0;
 				first_odd = 0;
 				first = check_one(0);
 				second = check_one(0);
-				//finished = 1;
+				finished_var = 1;
 			end
 			else begin// if (stall == 0) begin
-				stall = stall;
-				
-				/*if (stall == 1) begin
-					instr_dec[0] = instr_next[0];
-					instr_dec[1] = instr_next[1];
-					stall = 0;
+				if (stall == 1 || finished == 1) begin
+					instr_dec[0] = instr_next_reg[0];
+					instr_dec[1] = instr_next_reg[1];
+					stall_var = 0;
 					$display($time," New Decode: Choosing queued instr");
 				end
-				else begin*/
+				else begin
 					instr_dec[0] = instr[0];
 					instr_dec[1] = instr[1];
 					$display($time," New Decode: Choosing new instr");
-				//end
+				end
 				
 				
 				//$display($time," New Decode: Do I make it this far?");
@@ -269,19 +276,11 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 				end
 				else begin
 					first = check_one(0);
+					if ((instr_dec[0] == 0) && (first_cyc != 1))
+						finished_var = 1;
 				end
 				
-				if (stall_first) begin
-					$display($time," New Decode: RAW hazard found for first instr");
-					stall_pc = pc;
-					stall = 1;
-					instr_next[0] = instr_dec[0];
-					instr_next[1] = instr_dec[1];
-					first = check_one(0);
-					second = check_one(0);
-					//finished = 0;
-				end
-				else if ((instr_dec[1] != NOP) && (instr_dec[1] != LNOP) && (instr_dec[1] != 0)) begin
+				if ((instr_dec[1] != NOP) && (instr_dec[1] != LNOP) && (instr_dec[1] != 0)) begin
 					second = check_one(instr_dec[1]);
 					
 					if ((second.even_valid && first.even_valid) || (second.odd_valid && first.odd_valid)) begin		//Same pipe, structural hazard
@@ -294,6 +293,10 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 					end
 					else begin
 						if (second.ra_valid) begin
+							if ((second.ra_addr == first.rt_addr) && first.reg_write) begin
+								stall_second = 1;
+							end
+							
 							for (int i = 0; i <= 7; i++) begin
 								if ((second.ra_addr == rt_addr_delay_even[i]) && reg_write_delay_even[i]) begin
 									stall_second = 1;
@@ -304,6 +307,10 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 							end
 						end
 						if (second.rb_valid) begin
+							if ((second.rb_addr == first.rt_addr) && first.reg_write) begin
+								stall_second = 1;
+							end
+							
 							for (int i = 0; i <= 7; i++) begin
 								if ((second.rb_addr == rt_addr_delay_even[i]) && reg_write_delay_even[i]) begin
 									stall_second = 1;
@@ -314,6 +321,10 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 							end
 						end
 						if (second.rc_valid) begin
+							if ((second.rc_addr == first.rt_addr) && first.reg_write) begin
+								stall_second = 1;
+							end
+							
 							for (int i = 0; i <= 7; i++) begin
 								if ((second.rc_addr == rt_addr_delay_even[i]) && reg_write_delay_even[i]) begin
 									stall_second = 1;
@@ -326,20 +337,42 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 						if (stall_second)
 							$display($time," New Decode: RAW hazard found for second instr");
 					end
-					
-					if (stall_second) begin
-						stall_pc = pc;
-						stall = 1;
-						instr_next[0] = instr_dec[1];
-						instr_next[1] = 0;
-						second = check_one(0);
-						//finished = 0;
-					end
 				end
 				else begin
 					second = check_one(0);
+					if ((instr_dec[1] == 0) && (first_cyc != 1))
+						finished_var = 1;
+				end
+				
+				if (stall_first) begin
+					$display($time," New Decode: RAW hazard found for first instr");
+					stall_pc_var = pc;
+					stall_var = 1;
+					instr_next[0] = instr_dec[0];
+					instr_next[1] = instr_dec[1];
+					first = check_one(0);
+					second = check_one(0);
+					finished_var = 0;
+				end
+				else if (stall_second) begin
+					stall_pc_var = pc;
+					stall_var = 1;
+					instr_next[0] = instr_dec[1];
+					if (second.even_valid)
+						instr_next[1] = LNOP;
+					else
+						instr_next[1] = NOP;
+					second = check_one(0);
+					finished_var = 0;
+				end
+				
+				if (finished_var == 1) begin
+					instr_next[0] = NOP;
+					instr_next[1] = LNOP;
 				end
 			end
+			
+			$display($time, "finished_var: %b, stall_var: %b", finished_var, stall_var);
 		end
 	
 	
@@ -1260,7 +1293,7 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 				check.ra_valid_odd = 1;
 				check.rb_valid_odd = 1;
 				check.rc_valid_odd = 0;
-				$display("check: odd[0:10] %b ",odd[0:10]);
+				//$display("check: odd[0:10] %b ",odd[0:10]);
 				case(odd[0:10])
 					11'b00111011011 : begin		//shlqbi
 						$display("shlqbi ");
@@ -1860,7 +1893,7 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 					check_one.ra_valid = 1;
 					check_one.rb_valid = 1;
 					check_one.rc_valid = 0;
-					$display("check: instr[0:10] %b ",instr[0:10]);
+					//$display("check: instr[0:10] %b ",instr[0:10]);
 					case(instr[0:10])
 						11'b00111011011 : begin		//shlqbi
 							$display("shlqbi ");
