@@ -9,6 +9,8 @@ module IF(clk, reset, ins_cache, pc, read_enable);
     logic[0:31] instr_d[0:1];           // 2 instruction sent to DECODE stage
     logic stall;                        // incase of stall Instruction fetch 
                                         //should stop fetching new instruction
+										
+	logic branch_taken;
 
     output logic read_enable;           // Used to signal that IF is ready to read next set of 64B instruction
 
@@ -21,7 +23,7 @@ module IF(clk, reset, ins_cache, pc, read_enable);
 	localparam [0:31] LNOP = 32'b00000000001000000000000000000000;
 
 
-    Decode decode(clk, reset, instr_d, pc, pc_wb, stall);
+    Decode decode(clk, reset, instr_d, pc, pc_wb, stall, branch_taken);
 
 
     always_comb begin : pc_counter
@@ -30,30 +32,8 @@ module IF(clk, reset, ins_cache, pc, read_enable);
                 read_enable =1;
             end
             else begin
-                // read_enable =0;
-                /*if(pc_wb-pc_check > 255) begin
-                    pc_check = pc_check + pc_wb;
-                    read_enable =1;
-                    $display($time,"IF: Prefetch pc_check %d pc_wb %d ", pc_check, pc_wb);
-                end
-                else if(pc-pc_check == 256) begin
-                    pc_check = pc+pc_check; // Need to handle boundary instruction
-                    read_enable =1;
-                    $display($time,"IF: Prefetch  pc_check %d pc %d ", pc_check, pc);
-                end
-                else*/
                     read_enable = 0;
             end
-
-            // if( (pc+2)%16 == 0) begin 
-            //     // We fetch 64B instruction from LS [ as per the SPE orgnisation ]
-            //     // Once we reach 16 in count we fetch new set of 16 instruction
-            //     //  need to handle case when have branch/ stall in some intermedial level
-            //     // we will have to fetch old set of instruction from memory 
-            //     // this can be done using pc_wb 
-                
-            //     read_enable =1;
-            // end
              
     end
 
@@ -93,10 +73,18 @@ module IF(clk, reset, ins_cache, pc, read_enable);
             end
             else begin
                 
-                pc <= pc_wb; // Incase of stall we rely  on pc_wb to start fetch of new instruction
-                $display($time,"IF: pc update to pc_wb %d pc %d" ,pc_wb, pc);
-				instr_d[0]<=ins_cache[pc];
-                instr_d[1]<=ins_cache[pc+1];
+                //pc <= pc_wb; // Incase of stall we rely  on pc_wb to start fetch of new instruction
+				if (branch_taken == 0) begin
+					$display($time,"IF: pc update to pc_wb %d pc %d" ,pc_wb, pc);
+					instr_d[0]<=ins_cache[pc_wb];
+					instr_d[1]<=ins_cache[pc_wb+1];
+				end
+				else begin
+					pc <= pc_wb;
+					$display($time,"IF: pc update to pc_wb %d pc %d" ,pc_wb, pc);
+					instr_d[0]<=ins_cache[pc_wb-2];
+					instr_d[1]<=ins_cache[pc_wb-1];
+				end
 				
 				//instr_d[0]<=NOP;
                 //instr_d[1]<=LNOP;

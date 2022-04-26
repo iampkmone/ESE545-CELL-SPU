@@ -1,4 +1,4 @@
-module Decode(clk, reset, instr, pc, stall_pc, stall);
+module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
     input logic			clk, reset;
     input logic [0:31] 	instr[0:1];
 	logic [0:31] 		instr_next[0:1], instr_dec[0:1], instr_next_reg[0:1];
@@ -9,7 +9,8 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 	logic [7:0]			pc_wb;									//New program counter for branch
 	output logic [7:0]	stall_pc;
 	output logic 		stall;
-	logic				branch_taken;							//Was branch taken?
+	output logic		branch_taken_reg;							//Was branch taken?
+	logic				branch_taken;								//Was branch taken?
 	logic				first_odd, first_odd_out;				//1 if odd instr is first in pair, 0 else; Used for branch flushing
 	logic			 	stall_var;
 	logic [7:0]			stall_pc_var;
@@ -25,8 +26,10 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 	logic [0:17]	imm_even, imm_odd;						//Full possible immediate value (used with format)
 	logic			reg_write_even, reg_write_odd;			//1 if instr will write to rt, else 0
 	
-	logic 			finished, finished_var;					//Flag signalling end of program. System will not issue new instr when finished
+	//logic 			finished, finished_var;					//Flag signalling end of program. System will not issue new instr when finished
 	logic			first_cyc;								//Due to how finished is detected, workaround is needed to prevent flag after reset
+	
+	logic [7:0]			pc_dec;									//New program counter for stalls
 	
 	localparam [0:31] NOP = 32'b01000000001000000000000000000000;
 	localparam [0:31] LNOP = 32'b00000000001000000000000000000000;
@@ -151,7 +154,8 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 		instr_next_reg <= instr_next;
 		stall <= stall_var;
 		stall_pc <= stall_pc_var;
-		finished <= finished_var;
+		branch_taken_reg <= branch_taken;
+		//finished <= finished_var;
 		
 		first_cyc <= reset;		//flag is always high after reset and low otherwise
 	end
@@ -164,11 +168,11 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 		
 		stall_first = 0;
 		stall_second = 0;
-		finished_var = 0;
+		//finished_var = 0;
 	
 		$display("=======================================");
 		$display($time," New Decode: Sensitivity list");
-		$display("pc: %d, reset: %b, branch_taken: %b, finished: %b, stall: %b", pc, reset, branch_taken, finished, stall);
+		$display("pc: %d, reset: %b, branch_taken: %b, finished: %b, stall: %b", pc, reset, branch_taken, 0, stall);
 		$display("instr_next[0]: 		%b, instr_next[1]: 		%b, ", instr_next[0], instr_next[1]);
 		$display("instr_next_reg[0]: 	%b, instr_next_reg[1]: 	%b, ", instr_next_reg[0], instr_next_reg[1]);
 		$display("instr[0]:      		%b, instr[1]:      		%b", instr[0], instr[1]);
@@ -182,19 +186,20 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 			second = check_one(0);
 			instr_next[0] = NOP;
 			instr_next[1] = LNOP;
-			finished_var = 0;
+			//finished_var = 0;
 		end
 		else begin
 			if (branch_taken == 1) begin
+				$display($time," New Decode: Branch taken, jumping to addr: %d", pc_wb);
 				stall_pc_var = pc_wb;
 				stall_var = 1;
 				instr_next[0] = NOP;
 				instr_next[1] = LNOP;
 				first = check_one(0);
 				second = check_one(0);
-				finished_var = 0;					//If branch is taken right as program finishes, system must undo finished flag
+				//finished_var = 0;					//If branch is taken right as program finishes, system must undo finished flag
 			end
-			else if (finished) begin			//If program is finished, do not issue any more instr
+			/*else if (finished) begin			//If program is finished, do not issue any more instr
 				instr_next[0] = NOP;
 				instr_next[1] = LNOP;
 				stall_var = 0;
@@ -203,18 +208,19 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 				first = check_one(0);
 				second = check_one(0);
 				finished_var = 1;
-			end
+			end*/
 			else begin// if (stall == 0) begin
-				if (stall == 1 || finished == 1) begin
+				if (stall == 1) begin// || finished == 1) begin
 					instr_dec[0] = instr_next_reg[0];
 					instr_dec[1] = instr_next_reg[1];
 					stall_var = 0;
-					stall_pc_var = stall_pc;
+					pc_dec = stall_pc;
 					$display($time," New Decode: Choosing queued instr");
 				end
 				else begin
 					instr_dec[0] = instr[0];
 					instr_dec[1] = instr[1];
+					pc_dec = pc;
 					$display($time," New Decode: Choosing new instr");
 				end
 				
@@ -224,16 +230,16 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 					first = check_one(instr_dec[0]);	//Checking first instr
 					
 					if (first.ra_valid) begin
-						for (int i = 0; i <= 6; i++) begin
+						for (int i = 0; i <= 5; i++) begin
 							if ((first.ra_addr == rt_addr_delay_fp1[i]) && reg_write_delay_fp1[i]) begin
 								stall_first = 1;
 							end
 							
-							if ((i < 6) && (first.ra_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) begin
+							if ((i < 5) && (first.ra_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) begin
 								stall_first = 1;
 							end
 							
-							if ((i < 4) &&
+							if ((i < 3) &&
 								(((first.ra_addr == rt_addr_delay_fx2[i]) && reg_write_delay_fx2[i]) ||
 								((first.ra_addr == rt_addr_delay_b1[i]) && reg_write_delay_b1[i]) ||
 								((first.ra_addr == rt_addr_delay_p1[i]) && reg_write_delay_p1[i]))) begin
@@ -253,16 +259,16 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 						end
 					end
 					if (first.rb_valid) begin
-						for (int i = 0; i <= 6; i++) begin
+						for (int i = 0; i <= 5; i++) begin
 							if ((first.rb_addr == rt_addr_delay_fp1[i]) && reg_write_delay_fp1[i]) begin
 								stall_first = 1;
 							end
 							
-							if ((i < 6) && (first.rb_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) begin
+							if ((i < 5) && (first.rb_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) begin
 								stall_first = 1;
 							end
 							
-							if ((i < 4) &&
+							if ((i < 3) &&
 								(((first.rb_addr == rt_addr_delay_fx2[i]) && reg_write_delay_fx2[i]) ||
 								((first.rb_addr == rt_addr_delay_b1[i]) && reg_write_delay_b1[i]) ||
 								((first.rb_addr == rt_addr_delay_p1[i]) && reg_write_delay_p1[i]))) begin
@@ -282,16 +288,16 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 						end
 					end
 					if (first.rc_valid) begin
-						for (int i = 0; i <= 6; i++) begin
+						for (int i = 0; i <= 5; i++) begin
 							if ((first.rc_addr == rt_addr_delay_fp1[i]) && reg_write_delay_fp1[i]) begin
 								stall_first = 1;
 							end
 							
-							if ((i < 6) && (first.rc_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) begin
+							if ((i < 5) && (first.rc_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) begin
 								stall_first = 1;
 							end
 							
-							if ((i < 4) &&
+							if ((i < 3) &&
 								(((first.rc_addr == rt_addr_delay_fx2[i]) && reg_write_delay_fx2[i]) ||
 								((first.rc_addr == rt_addr_delay_b1[i]) && reg_write_delay_b1[i]) ||
 								((first.rc_addr == rt_addr_delay_p1[i]) && reg_write_delay_p1[i]))) begin
@@ -313,8 +319,8 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 				end
 				else begin
 					first = check_one(0);
-					if ((instr_dec[0] == 0) && (first_cyc != 1))
-						finished_var = 1;
+					//if ((instr_dec[0] == 0) && (first_cyc != 1))
+						//finished_var = 1;
 				end
 				
 				if ((instr_dec[1] != NOP) && (instr_dec[1] != LNOP) && (instr_dec[1] != 0)) begin
@@ -330,16 +336,16 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 					end
 					else begin
 						if (second.ra_valid) begin
-							for (int i = 0; i <= 6; i++) begin
+							for (int i = 0; i <= 5; i++) begin
 								if ((second.ra_addr == rt_addr_delay_fp1[i]) && reg_write_delay_fp1[i]) begin
 									stall_second = 1;
 								end
 								
-								if ((i < 6) && (second.ra_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) begin
+								if ((i < 5) && (second.ra_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) begin
 									stall_second = 1;
 								end
 								
-								if ((i < 4) &&
+								if ((i < 3) &&
 									(((second.ra_addr == rt_addr_delay_fx2[i]) && reg_write_delay_fx2[i]) ||
 									((second.ra_addr == rt_addr_delay_b1[i]) && reg_write_delay_b1[i]) ||
 									((second.ra_addr == rt_addr_delay_p1[i]) && reg_write_delay_p1[i]))) begin
@@ -362,16 +368,16 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 							end
 						end
 						if (second.rb_valid) begin
-							for (int i = 0; i <= 6; i++) begin
+							for (int i = 0; i <= 5; i++) begin
 								if ((second.rb_addr == rt_addr_delay_fp1[i]) && reg_write_delay_fp1[i]) begin
 									stall_second = 1;
 								end
 								
-								if ((i < 6) && (second.rb_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) begin
+								if ((i < 5) && (second.rb_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) begin
 									stall_second = 1;
 								end
 								
-								if ((i < 4) &&
+								if ((i < 3) &&
 									(((second.rb_addr == rt_addr_delay_fx2[i]) && reg_write_delay_fx2[i]) ||
 									((second.rb_addr == rt_addr_delay_b1[i]) && reg_write_delay_b1[i]) ||
 									((second.rb_addr == rt_addr_delay_p1[i]) && reg_write_delay_p1[i]))) begin
@@ -394,16 +400,16 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 							end
 						end
 						if (second.rc_valid) begin
-							for (int i = 0; i <= 6; i++) begin
+							for (int i = 0; i <= 5; i++) begin
 								if ((second.rc_addr == rt_addr_delay_fp1[i]) && reg_write_delay_fp1[i]) begin
 									stall_second = 1;
 								end
 								
-								if ((i < 6) && (second.rc_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) begin
+								if ((i < 5) && (second.rc_addr == rt_addr_delay_ls1[i]) && reg_write_delay_ls1[i]) begin
 									stall_second = 1;
 								end
 								
-								if ((i < 4) &&
+								if ((i < 3) &&
 									(((second.rc_addr == rt_addr_delay_fx2[i]) && reg_write_delay_fx2[i]) ||
 									((second.rc_addr == rt_addr_delay_b1[i]) && reg_write_delay_b1[i]) ||
 									((second.rc_addr == rt_addr_delay_p1[i]) && reg_write_delay_p1[i]))) begin
@@ -431,22 +437,22 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 				end
 				else begin
 					second = check_one(0);
-					if ((instr_dec[1] == 0) && (first_cyc != 1))
-						finished_var = 1;
+					//if ((instr_dec[1] == 0) && (first_cyc != 1))
+						//finished_var = 1;
 				end
 				
 				if (stall_first) begin
 					$display($time," New Decode: RAW hazard found for first instr");
-					stall_pc_var = pc;
+					stall_pc_var = pc_dec;
 					stall_var = 1;
 					instr_next[0] = instr_dec[0];
 					instr_next[1] = instr_dec[1];
 					first = check_one(0);
 					second = check_one(0);
-					finished_var = 0;
+					//finished_var = 0;
 				end
 				else if (stall_second) begin
-					stall_pc_var = pc;
+					stall_pc_var = pc_dec;
 					stall_var = 1;
 					instr_next[0] = instr_dec[1];
 					if (second.even_valid)
@@ -454,16 +460,16 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 					else
 						instr_next[1] = NOP;
 					second = check_one(0);
-					finished_var = 0;
+					//finished_var = 0;
 				end
 				
-				if (finished_var == 1) begin
+				/*if (finished_var == 1) begin
 					instr_next[0] = NOP;
 					instr_next[1] = LNOP;
-				end
+				end*/
 			end
 			
-			$display($time, "finished_var: %b, stall_var: %b", finished_var, stall_var);
+			$display($time, "finished_var: %b, stall_var: %b", 0, stall_var);
 		end
 	
 
@@ -756,6 +762,7 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 					11'b01010110100 : begin			//cntb
 						check_one.op = 11'b01010110100;
 						check_one.unit = 2;
+						check_one.rb_valid = 0;
 					end
 					11'b00011010011 : begin			//avgb
 						check_one.op = 11'b00011010011;
@@ -925,6 +932,7 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 				check_one.unit = 1;
 				check_one.imm = $signed(instr[8:17]);
 				check_one.reg_write = 0;
+				check_one.rc_valid = 1;
 			end
 			else begin
 				check_one.format = 5;					//RI16-type
@@ -941,6 +949,7 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 						check_one.op = 9'b001000001;
 						check_one.unit = 1;
 						check_one.reg_write = 0;
+						check_one.rc_valid = 1;
 					end
 					9'b001100100 : begin		//br
 						check_one.op = 9'b001100100;
@@ -960,11 +969,13 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 						check_one.op = 9'b001000010;
 						check_one.unit = 2;
 						check_one.reg_write = 0;
+						check_one.rc_valid = 1;
 					end
 					9'b001000000 : begin		//brz
 						check_one.op = 9'b001000000;
 						check_one.unit = 2;
 						check_one.reg_write = 0;
+						check_one.rc_valid = 1;
 					end
 					default : check_one.format = 7;
 				endcase
@@ -995,14 +1006,17 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 						11'b00110110010 : begin		//gbb
 							check_one.op = 11'b00110110010;
 							check_one.unit = 0;
+							check_one.rb_valid = 0;
 						end
 						11'b00110110001 : begin		//gbh
 							check_one.op = 11'b00110110001;
 							check_one.unit = 0;
+							check_one.rb_valid = 0;
 						end
 						11'b00110110000 : begin		//gb
 							check_one.op = 11'b00110110000;
 							check_one.unit = 0;
+							check_one.rb_valid = 0;
 						end
 						11'b00111000100 : begin		//lqx
 							check_one.op = 11'b00111000100;
@@ -1012,11 +1026,13 @@ module Decode(clk, reset, instr, pc, stall_pc, stall);
 							check_one.op = 11'b00101000100;
 							check_one.unit = 1;
 							check_one.reg_write = 0;
+							check_one.rc_valid = 1;
 						end
 						11'b00110101000 : begin		//bi
 							check_one.op = 11'b00110101000;
 							check_one.unit = 2;
 							check_one.reg_write = 0;
+							check_one.rb_valid = 0;
 						end
 						11'b00000000001 : begin		//lnop
 							check_one.op = 11'b00000000001;
