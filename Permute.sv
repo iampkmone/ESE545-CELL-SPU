@@ -76,7 +76,7 @@ module Permute(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, r
 							rt_delay[0] <= ra << rb[29:31];
 						end
                         11'b00111011111 : begin                 //shlqby rt, ra, rb : Shift Left Quadword by Bytes
-                            rt_delay[0] = ra << rb[27:31];
+                            rt_delay[0] <= ra << (rb[27:31] * 8);
                         end
                         11'b00111011000 : begin                 //rotqbi rt, ra, rb : Rotate Quadword by Bits
 							tmp = rb[29:31];
