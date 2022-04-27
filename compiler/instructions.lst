@@ -71,6 +71,7 @@ clgtbi rt, ra, imm10	01011110
 clgthi rt, ra, imm10	01011101
 clgti rt, ra, imm10	01011100
 ilh rt, imm16	010000011
+il rt, imm16	010000001
 ilhu rt, imm16	010000010
 iohl rt, imm16	011000001
 ila rt, imm18	0100001
@@ -81,6 +82,7 @@ rotqby rt, ra, rb	00111011100
 gbb rt, ra	00110110010
 gbh rt, ra	00110110001
 gb rt, ra	00110110000
+fsm rt, ra, rb	00110110100
 lqx rt, ra, rb	00111000100
 stqx rt, ra, rb	00101000100
 bi ra	00110101000
@@ -89,6 +91,7 @@ shlqbii rt, ra, imm7	00111111011
 shlqbyi rt, ra, imm7	00111111111
 rotqbii rt, ra, imm7	00111111000
 rotqbyi rt, ra, imm7	00111111100
+rotqmbyi rt, ra, imm7	00111111101
 lqd rt, imm10(ra)	00110100
 stqd rt, imm10(ra)	00100100
 lqa rt, imm16	001100001

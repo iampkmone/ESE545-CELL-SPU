@@ -102,29 +102,6 @@ module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_writ
 		fx1_format = 0;
 		fx1_reg_write = 0;
 		
-		/*for (int i=0; i < 7; i++) begin
-			rt_addr_delay[i] = 0;
-			reg_write_delay[i] = 0;
-		end
-		
-		for (int i=0; i < 6; i++) begin
-			rt_addr_delay[i] = rt_addr_delay[i] | rt_addr_delay_fp1[i];
-			reg_write_delay[i] = rt_addr_delay[i] | reg_write_delay_fp1[i];
-		end
-		
-		for (int i=0; i < 3; i++) begin
-			rt_addr_delay[i] = rt_addr_delay[i] | rt_addr_delay_fx2[i];
-			reg_write_delay[i] = rt_addr_delay[i] | reg_write_delay_fx2[i];
-			
-			rt_addr_delay[i] = rt_addr_delay[i] | rt_addr_delay_b1[i];
-			reg_write_delay[i] = rt_addr_delay[i] | reg_write_delay_b1[i];
-		end
-		
-		for (int i=0; i < 1; i++) begin
-			rt_addr_delay[i] = rt_addr_delay[i] | rt_addr_delay_fx1[i];
-			reg_write_delay[i] = rt_addr_delay[i] | reg_write_delay_fx1[i];
-		end*/
-		
 		
 		case (unit)									//Mux to determine which unit will take the instr
 			2'b00 : begin							//Instr going to fp1

@@ -554,6 +554,15 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 			check_one.unit = 3;
 			check_one.imm = $signed(instr[9:24]);
 		end
+		else if (instr[0:8] == 9'b010000001) begin		//il
+			check_one.format = 5;
+			check_one.ra_valid = 0;
+			check_one.rb_valid = 0;
+			check_one.rc_valid = 0;
+			check_one.op = 9'b010000001;
+			check_one.unit = 3;
+			check_one.imm = $signed(instr[9:24]);
+		end
 		else if (instr[0:8] == 9'b010000010) begin		//ilhu
 			check_one.format = 5;
 			check_one.ra_valid = 0;
@@ -1021,6 +1030,12 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 							check_one.reg_write = 0;
 							check_one.rb_valid = 0;
 						end
+						11'b00110110100 : begin		//fsm
+							check_one.op = 11'b00110110100;
+							check_one.unit = 3;
+							check_one.reg_write = 0;
+							check_one.rb_valid = 0;
+						end
 						11'b00000000001 : begin		//lnop
 							check_one.op = 11'b00000000001;
 							check_one.unit = 0;
@@ -1049,6 +1064,10 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 							end
 							11'b00111111100 : begin		//rotqbyi
 								check_one.op = 11'b00111111100;
+								check_one.unit = 0;
+							end
+							11'b00111111101  : begin		//rotqmbyi
+								check_one.op = 11'b00111111101;
 								check_one.unit = 0;
 							end
 							default begin
