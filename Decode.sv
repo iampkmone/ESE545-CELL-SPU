@@ -153,7 +153,6 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 		stall <= stall_var;
 		stall_pc <= stall_pc_var;
 		branch_taken_reg <= branch_taken;
-		//finished <= finished_var;
 		
 		first_cyc <= reset;		//flag is always high after reset and low otherwise
 	end
