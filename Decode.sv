@@ -554,6 +554,15 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 			check_one.unit = 3;
 			check_one.imm = $signed(instr[9:24]);
 		end
+		else if (instr[0:8] == 9'b010000001) begin		//il
+			check_one.format = 5;
+			check_one.ra_valid = 0;
+			check_one.rb_valid = 0;
+			check_one.rc_valid = 0;
+			check_one.op = 9'b010000001;
+			check_one.unit = 3;
+			check_one.imm = $signed(instr[9:24]);
+		end
 		else if (instr[0:8] == 9'b010000010) begin		//ilhu
 			check_one.format = 5;
 			check_one.ra_valid = 0;

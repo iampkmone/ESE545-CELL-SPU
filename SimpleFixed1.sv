@@ -663,6 +663,11 @@ module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_wri
 							// $display("rt_delay[0] %b %h %d ",rt_delay[0],rt_delay[0],rt_delay[0]);
 							// $display("imm %b %h %d ", {imm[2:17],16'h0000},{imm[2:17],16'h0000},{imm[2:17],16'h0000});
 						end
+						9'b010000001: begin // il rt, imm16 Immediate Load Word
+							for(int i=0;i<4;i++) begin
+								rt_delay[0][(i*32) +: 32] = $signed(imm[2:17]);
+							end
+						end
 						9'b011000001: begin // iohl rt, imm16 Immediate Or Halfword Lower
 						// $display("iohl rt, imm16");
 							for(int i=0;i<16;i=i+4) begin

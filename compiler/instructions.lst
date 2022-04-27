@@ -72,6 +72,7 @@ clgthi rt, ra, imm10	01011101
 clgti rt, ra, imm10	01011100
 ilh rt, imm16	010000011
 ilhu rt, imm16	010000010
+il rt, imm16	010000001
 iohl rt, imm16	011000001
 ila rt, imm18	0100001
 shlqbi rt, ra, rb	00111011011
