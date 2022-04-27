@@ -149,3 +149,5 @@ ilh 82 0
 ilh 83 0
 ilh 84 0
 brnz 0 78
+lnop
+stop
