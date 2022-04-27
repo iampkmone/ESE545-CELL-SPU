@@ -73,16 +73,16 @@ and 29 29 20 // loading matrix2[3][3]
 ilh 30 4
 rotqby 29 29 30
 xor 18 18 29 // reg 18 will have elements for column 4s matrix2
-ila 0 4
-ai 0 0 -1
-lqd 1 0(0) // load maxtr1[1]
-mpya 60 15 1 60 // matrix1[0] x matrix2 column
-mpya 61 16 1 61 // matrix1[0] x matrix2 column
-mpya 62 17 1 62 // matrix1[0] x matrix2 column
-mpya 63 18 1 63 // matrix1[0] x matrix2 column
-and 70 60 20 // reg 70 maxtrix3[0][0]
-a 81 81 70
-shlqby 60 60 30
+ila 0 4 // i=4
+ai 0 0 -1 // i--;
+lqd 1 0(0) // load maxtr1[i]
+mpya 60 15 1 60 // matrix1[i] x matrix2 column computes a(i)xb(i) a(i+1)xb(i+1) ...
+mpya 61 16 1 61 // matrix1[i] x matrix2 column
+mpya 62 17 1 62 // matrix1[i] x matrix2 column
+mpya 63 18 1 63 // matrix1[i] x matrix2 column
+and 70 60 20 // reg 70 maxtrix3[i][0]
+a 81 81 70 // adding extract aixbi to reg 81
+shlqby 60 60 30 // shift by a 4 bytes to bring int a(i+1)xb(i+1)
 and 70 60 20
 a 81 81 70
 shlqby 60 60 30
@@ -90,9 +90,9 @@ and 70 60 20
 a 81 81 70
 shlqby 60 60 30
 and 70 60 20
-a 81 81 70
+a 81 81 70 // reg 81 will have the sum of the products for a cell
 shlqby 60 60 30
-and 71 61 20 // reg 71 maxtrix3[0][1]
+and 71 61 20 // reg 71 maxtrix3[i][1]
 a 82 82 71
 shlqby 61 61 30
 and 71 61 20
@@ -104,7 +104,7 @@ shlqby 61 61 30
 and 71 61 20
 a 82 82 71
 shlqby 61 61 30
-and 72 62 20 // reg 72 maxtrix3[0][2]
+and 72 62 20 // reg 72 maxtrix3[i][2]
 a 83 83 72
 shlqby 62 62 30
 and 72 62 20
@@ -116,7 +116,7 @@ shlqby 62 62 30
 and 72 62 20
 a 83 83 72
 shlqby 62 62 30
-and 73 63 20 // reg 73 maxtrix3[0][3]
+and 73 63 20 // reg 73 maxtrix3[i][3]
 a 84 84 73
 shlqby 63 63 30
 and 73 63 20
@@ -127,15 +127,15 @@ a 84 84 73
 shlqby 63 63 30
 and 73 63 20
 a 84 84 73
-rotqby 82 82 33
+rotqby 82 82 33 // aliging reg to slot in quadword to indicated row
 rotqby 83 83 31
 rotqby 84 84 32
-or 80 80 81
+or 80 80 81 // building the quad word to reg 80
 or 80 80 82
 or 80 80 83
 or 80 80 84
 stqd 80 10(0)
-ilh 60 0
+ilh 60 0 // clearing register
 ilh 61 0
 ilh 62 0
 ilh 63 0
