@@ -17,7 +17,7 @@ ila 25 3		//Set r25 to 3 and decrement
 ila 26 0
 ai 25 25 -1		//Keep decrementing until r25==0
 ai 26 26 1
-brnz 25 17		//Branch hazard resolution, odd destination addr; Also RAW hazard, brnz is stalled 1 cyc until dec r25 finishes
+brnz 25 -2		//Branch hazard resolution, odd destination addr; Also RAW hazard, brnz is stalled 1 cyc until dec r25 finishes
 avgb 2 0 1		//Dual issue example
 rotqbi 12 4 5
 mpy 5 3 4
