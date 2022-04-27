@@ -5,10 +5,6 @@ ilh 31 8 // use to shift by 8 byte
 ilh 32 4 // use to shift by 8 bytes
 ilh 33 12 // use to shift by 8 bytes
 shlqby 20 10 30 // generate FFFFFFFF ins first word
-lqd 1 0(0) // load maxtr1[1]
-lqd 2 1(0) // load maxtr1[1]
-lqd 3 2(0) // load maxtr1[2]
-lqd 4 3(0) // load maxtr1[3]
 lqd 5 4(0) // load matrix2[0] Column 1
 and 15 5 20 // reg 15 slot 1 has matrix[0][0]
 lqd 6 5(0) // loading matrix2[1] row
@@ -78,6 +74,8 @@ ilh 30 4
 rotqby 29 29 30
 xor 18 18 29 // reg 18 will have elements for column 4s matrix2
 ila 0 4
+ai 0 0 -1
+lqd 1 0(0) // load maxtr1[1]
 mpya 60 15 1 60 // matrix1[0] x matrix2 column
 mpya 61 16 1 61 // matrix1[0] x matrix2 column
 mpya 62 17 1 62 // matrix1[0] x matrix2 column
@@ -137,3 +135,17 @@ or 80 80 82
 or 80 80 83
 or 80 80 84
 stqd 80 10(0)
+ilh 60 0
+ilh 61 0
+ilh 62 0
+ilh 63 0
+ilh 70 0
+ilh 71 0
+ilh 72 0
+ilh 73 0
+ilh 80 0
+ilh 81 0
+ilh 82 0
+ilh 83 0
+ilh 84 0
+brnz 0 78
