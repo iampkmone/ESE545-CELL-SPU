@@ -22,14 +22,12 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 	logic [0:10]	op_even, op_odd;						//Opcode of instr (used with format)
 	logic [1:0]		unit_even, unit_odd;					//Destination unit of instr; Order of: FP, FX2, Byte, FX1 (Even); Perm, LS, Br (Odd)
 	logic [0:6]		rt_addr_even, rt_addr_odd;				//Destination register addresses
-	// logic [0:127]	ra_even, rb_even, rc_even, ra_odd, rb_odd, rt_st_odd;	//Register values from RegTable
 	logic [0:17]	imm_even, imm_odd;						//Full possible immediate value (used with format)
 	logic			reg_write_even, reg_write_odd;			//1 if instr will write to rt, else 0
 	
-	//logic 			finished, finished_var;					//Flag signalling end of program. System will not issue new instr when finished
 	logic			first_cyc;								//Due to how finished is detected, workaround is needed to prevent flag after reset
 	
-	logic [7:0]			pc_dec;									//New program counter for stalls
+	logic [7:0]		pc_dec, pc_pipe;									//New program counter for stalls
 	
 	localparam [0:31] NOP = 32'b01000000001000000000000000000000;
 	localparam [0:31] LNOP = 32'b00000000001000000000000000000000;
@@ -74,7 +72,7 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 	
 	op_code first, second;
 
-    Pipes pipe(.clk(clk), .reset(reset), .pc(pc),
+    Pipes pipe(.clk(clk), .reset(reset), .pc(pc_pipe),
 		.instr_even(instr_even), .instr_odd(instr_odd),
 		.pc_wb(pc_wb), .branch_taken(branch_taken),
         .op_even(op_even), .op_odd(op_odd),
@@ -138,6 +136,7 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 			rt_addr_odd <= second.rt_addr;
 			unit_odd <= second.unit;
 			format_odd <= second.format;
+			first_odd_out <= 0;
 		end
 		else begin
 			instr_odd <= 0;
@@ -153,6 +152,7 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 		stall <= stall_var;
 		stall_pc <= stall_pc_var;
 		branch_taken_reg <= branch_taken;
+		pc_pipe <= pc_dec;
 		
 		first_cyc <= reset;		//flag is always high after reset and low otherwise
 	end
@@ -160,12 +160,9 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 	
 	//Decode logic
 	always_comb begin
-		//logic stall_first;
-		//logic stall_second;
 		
 		stall_first = 0;
 		stall_second = 0;
-		//finished_var = 0;
 	
 		$display("=======================================");
 		$display($time," New Decode: Sensitivity list");
@@ -209,9 +206,7 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 					$display($time," New Decode: Choosing new instr");
 				end
 				
-				
-				//$display($time," New Decode: Do I make it this far?");
-				if ((instr_dec[0] != 0)) begin //&& (instr_dec[0] != NOP) && (instr_dec[0] != LNOP)) begin
+				if ((instr_dec[0] != 0)) begin
 					first = check_one(instr_dec[0]);	//Checking first instr
 					
 					if (first.ra_valid) begin
@@ -295,11 +290,9 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 				end
 				else begin
 					first = check_one(0);
-					//if ((instr_dec[0] == 0) && (first_cyc != 1))
-						//finished_var = 1;
 				end
 				
-				if ((instr_dec[1] != 0)) begin //&& (instr_dec[1] != NOP) && (instr_dec[1] != LNOP)) begin
+				if ((instr_dec[1] != 0)) begin
 					second = check_one(instr_dec[1]);
 					
 					if ((second.even_valid && first.even_valid) || (second.odd_valid && first.odd_valid)) begin		//Same pipe, structural hazard
@@ -416,14 +409,10 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 								$display($time," New Decode: RAW hazard found for second instr rc");
 							end
 						end
-						//if (stall_second)
-							//$display($time," New Decode: RAW hazard found for second instr");
 					end
 				end
 				else begin
 					second = check_one(0);
-					//if ((instr_dec[1] == 0) && (first_cyc != 1))
-						//finished_var = 1;
 				end
 				
 				if (stall_first) begin
@@ -434,27 +423,17 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 					instr_next[1] = instr_dec[1];
 					first = check_one(0);
 					second = check_one(0);
-					//finished_var = 0;
 				end
 				else if (stall_second) begin
 					stall_pc_var = pc_dec;
 					stall_var = 1;
-					instr_next[0] = instr_dec[1];
-					if (second.even_valid)
-						instr_next[1] = 0;
-					else
-						instr_next[1] = 0;
+					instr_next[0] = 0;
+					instr_next[1] = instr_dec[1];
 					second = check_one(0);
-					//finished_var = 0;
 				end
 				else begin
 					stall_var = 0;
 				end
-				
-				/*if (finished_var == 1) begin
-					instr_next[0] = NOP;
-					instr_next[1] = LNOP;
-				end*/
 			end
 			
 			$display($time, "finished_var: %b, stall_var: %b", 0, stall_var);
@@ -1076,11 +1055,7 @@ module Decode(clk, reset, instr, pc, stall_pc, stall, branch_taken_reg);
 				end
 			end
 		end
-		else check_one.odd_valid = 0;
-	
-	
-		//$display("check : op %h ", check_one.op);
-		
+		else check_one.odd_valid = 0;		
 	endfunction
 
 endmodule
