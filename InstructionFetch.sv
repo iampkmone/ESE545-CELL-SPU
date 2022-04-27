@@ -67,7 +67,8 @@ module IF(clk, reset, ins_cache, pc, read_enable);
                 $display($time," IF: ins %b ins %b pc %d pc_wb %d read_enable %d ",instr_d[0], instr_d[1],pc,pc_wb, read_enable);
                 $display($time," IF: ins %h ins %h pc %d pc_wb %d read_enable %d ",instr_d[0], instr_d[1],pc,pc_wb, read_enable);
 
-                pc <= pc+2;
+                if (pc < 254)
+					pc <= pc+2;
 
                 
             end
