@@ -16,8 +16,6 @@ module tb_InstructionFetch();
         #5 clk = ~clk;
 	end
     initial begin
-        
-		// $readmemb("./ins.data", ins_mem);
         $readmemb("./compiler/out", ins_mem);
 		for(integer i=0;i<256;i++) begin
 			$display("PC %d %b", i, ins_mem[i]);
@@ -36,13 +34,8 @@ module tb_InstructionFetch();
             instr[0:255] = ins_mem[(pc)+:256];
             for(integer i=0;i<256;i++) begin
 			    $display("PC %d %b", i, ins_mem[i+pc]);
-                // ;
-                // instr[1] = ins_mem[pc+1];
 		    end
-          
         end
     end
-
-
 
 endmodule

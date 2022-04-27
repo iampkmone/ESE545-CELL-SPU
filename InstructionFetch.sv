@@ -22,19 +22,16 @@ module IF(clk, reset, ins_cache, pc, read_enable);
 	localparam [0:31] NOP = 32'b01000000001000000000000000000000;
 	localparam [0:31] LNOP = 32'b00000000001000000000000000000000;
 
-
     Decode decode(clk, reset, instr_d, pc, pc_wb, stall, branch_taken);
 
-
     always_comb begin : pc_counter
-            if(reset == 1) begin
-                pc_check = 0;
-                read_enable =1;
-            end
-            else begin
-                    read_enable = 0;
-            end
-             
+        if(reset == 1) begin
+            pc_check = 0;
+            read_enable =1;
+        end
+        else begin
+                read_enable = 0;
+        end
     end
 
     always_ff @(posedge clk) begin : fetch_instruction

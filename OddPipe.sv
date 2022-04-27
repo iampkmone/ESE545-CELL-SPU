@@ -101,9 +101,6 @@ module OddPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rt_st, imm, reg_wr
 	end
 	
 	always_ff @(posedge clk) begin
-		//fw_wb[0] <= 0;								//fw0 doesn't exist, just use 0
-		//fw_addr_wb[0] <= 0;
-		//fw_write_wb[0] <= 0;
 		
 		if (reset == 1) begin
 			rt_wb = 0;
