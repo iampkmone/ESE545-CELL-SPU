@@ -48,7 +48,7 @@ class Assembler:
     def parse_line(self,line):
         ins = line.strip()
         ins =ins.split("//")
-        ins = ins[0].split(" ")
+        ins = ins[0].strip().split(" ")
         return ins
 
     def parse_input(self):
