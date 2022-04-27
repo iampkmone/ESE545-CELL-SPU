@@ -16,19 +16,19 @@ module tb_InstructionFetch();
         #5 clk = ~clk;
 	end
     initial begin
-        
+
 		// $readmemb("./ins.data", ins_mem);
         $readmemb("./compiler/out", ins_mem);
 		for(integer i=0;i<256;i++) begin
 			$display("PC %d %b", i, ins_mem[i]);
 		end
-        #1; reset =1; 
-        @(posedge clk); #1; reset = 1; 
-        @(posedge clk); #1; reset = 0; 
+        #1; reset =1;
+        @(posedge clk); #1; reset = 1;
+        @(posedge clk); #1; reset = 0;
 
-      
 
-        #300;$stop;
+
+        #300000;$stop;
     end
     always @(posedge clk) begin
         if(read_enable==1) begin
@@ -39,7 +39,7 @@ module tb_InstructionFetch();
                 // ;
                 // instr[1] = ins_mem[pc+1];
 		    end
-          
+
         end
     end
 

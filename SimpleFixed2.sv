@@ -246,7 +246,7 @@ module SimpleFixed2(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_
 							end
 							// $display("rt_delay[0] = %h %b ",rt_delay[0],rt_delay[0]);
 						end
-	
+
 						11'b00001111100: begin // rothi rt, ra, imm7 :   Rotate Halfword Immediate
 							// $display("rothi rt, ra, imm7");
 							// $display("imm7 %h %b",imm,imm);
@@ -255,7 +255,7 @@ module SimpleFixed2(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_
 								s[i] =  imm[11];
 							end
 							s[9:15] = imm[11:17];
-	
+
 							for(i = 0;i<=15;i=i+2) begin
 								tmp[0:15] = ra[(i*8) +: 16];
 								for(int b = 0;b<16;b=b+1) begin
@@ -268,14 +268,14 @@ module SimpleFixed2(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_
 									// // $display("%d %d %b %b %b",i,b,tmp,tmp[b+(rb[(i*8) +: 16] & 16'h000F)],tmp[b+(rb[(i*8) +: 16] & 16'h000F)-16]);
 								end
 								// // $display("tmp = %h rt_delay[0] = %h s = %h %d ",tmp,rt_delay[0][(i*8) +: 16],rb[(i*8) +: 16] & 16'h000F, rb[(i*8) +: 16] & 16'h000F);
-	
+
 							end
 							// $display("rt_delay[0] = %h %b ",rt_delay[0],rt_delay[0]);
 						end
 						11'b00001111000 : begin			//roti rt, ra, imm7 : Rotate Word Immediate
-							// $display("roti rt, ra, imm7");
-							// $display("imm7 %h %b",imm,imm);
-							// $display("ra %h %b",ra,ra);
+							$display("roti rt, ra, imm7");
+							$display("imm7 %h %b",imm,imm);
+							$display("ra %h %b",ra,ra);
 							for(int i=0;i<26;i=i+1) begin
 								s[i] =  imm[11];
 							end
@@ -289,22 +289,22 @@ module SimpleFixed2(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_
 									else begin
 										rt_delay[0][(i*8)+b] = tmp[b+(s[0:31]  & 32'h0000001F)-32];
 									end
-									// // $display("%d %d %b %b %b",i,b,tmp,tmp[b+(rb[(i*8) +: 32] & 32'h0000001F)],tmp[b+(rb[(i*8) +: 32] & 32'h0000001F)-32]);
+									$display("%d %d %b %b %b",i,b,tmp,tmp[b+(rb[(i*8) +: 32] & 32'h0000001F)],tmp[b+(rb[(i*8) +: 32] & 32'h0000001F)-32]);
 								end
-								// $display("tmp = %h rt_delay[0] = %h s = %h %d ",tmp,rt_delay[0][(i*8) +: 32],(s[0:31] & 32'h0000001F), (s[0:31] & 32'h0000001F));
+								$display("tmp = %h rt_delay[0] = %h s = %h %d ",tmp,rt_delay[0][(i*8) +: 32],(s[0:31] & 32'h0000001F), (s[0:31] & 32'h0000001F));
 							end
-							// $display("rt_delay[0] = %h %b ",rt_delay[0],rt_delay[0]);
+							$display("rt_delay[0] = %h %b ",rt_delay[0],rt_delay[0]);
 						end
 						11'b00001111110  : begin	//rotmahi rt, ra, imm7 : Rotate and Mask Algebraic Halfword Immediate
 							// $display("rotmahi rt, ra, imm7");
 							// $display("imm7 %h %b",imm,imm);
 							// $display("ra %h %b",ra,ra);
-	
+
 							for(int i=0;i<9;i=i+1) begin
 								s[i] =  imm[11];
 							end
 							s[9:15] = imm[11:17];
-	
+
 							for(i = 0;i<=15;i=i+2) begin
 								tmp[0:15] = ra[(i*8) +: 16];
 								for(int b = 0;b<16;b=b+1) begin

@@ -73,8 +73,8 @@ class Assembler:
 
                 ins = self.parse_line(line)
                 memonic = ins[0]
-                if "stop" in memonic:
-                    break
+                # if "stop" in memonic:
+                #     break
                 #print(memonic)
                 opcode = self.ins_opcode_mapping[memonic]
                 print(opcode)
