@@ -77,40 +77,63 @@ and 29 29 20 // loading matrix2[3][3]
 ilh 30 4
 rotqby 29 29 30
 xor 18 18 29 // reg 18 will have elements for column 4s matrix2
-ilh 69 4
+ila 0 4
 mpya 60 15 1 60 // matrix1[0] x matrix2 column
 mpya 61 16 1 61 // matrix1[0] x matrix2 column
 mpya 62 17 1 62 // matrix1[0] x matrix2 column
 mpya 63 18 1 63 // matrix1[0] x matrix2 column
+and 70 60 20 // reg 70 maxtrix3[0][0]
+a 81 81 70
+shlqby 60 60 30
 and 70 60 20
 a 81 81 70
 shlqby 60 60 30
-and 72 61 20
-a 82 82 72
+and 70 60 20
+a 81 81 70
+shlqby 60 60 30
+and 70 60 20
+a 81 81 70
+shlqby 60 60 30
+and 71 61 20 // reg 71 maxtrix3[0][1]
+a 82 82 71
 shlqby 61 61 30
-ahi 69 69 -1
-brnz 69 84
-lnop
-ilh 26 4
-lnop
-and 74 61 20
-a 83 83 74
+and 71 61 20
+a 82 82 71
 shlqby 61 61 30
-ahi 26 26 -1
-brnz 26 95
-lnop
-ilh 27 4
-lnop
-and 74 62 20
-a 84 84 74
+and 71 61 20
+a 82 82 71
+shlqby 61 61 30
+and 71 61 20
+a 82 82 71
+shlqby 61 61 30
+and 72 62 20 // reg 72 maxtrix3[0][2]
+a 83 83 72
 shlqby 62 62 30
-ahi 27 27 -1
-brnz 27 103
-lnop
-ilh 28 4
-lnop
-and 76 63 20
-a 85 85 76
+and 72 62 20
+a 83 83 72
+shlqby 62 62 30
+and 72 62 20
+a 83 83 72
+shlqby 62 62 30
+and 72 62 20
+a 83 83 72
+shlqby 62 62 30
+and 73 63 20 // reg 73 maxtrix3[0][3]
+a 84 84 73
 shlqby 63 63 30
-ahi 28 28 -1
-brnz 28 109
+and 73 63 20
+a 84 84 73
+shlqby 63 63 30
+and 73 63 20
+a 84 84 73
+shlqby 63 63 30
+and 73 63 20
+a 84 84 73
+rotqby 82 82 33
+rotqby 83 83 31
+rotqby 84 84 32
+or 80 80 81
+or 80 80 82
+or 80 80 83
+or 80 80 84
+stqd 80 10(0)
