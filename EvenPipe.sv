@@ -171,8 +171,8 @@ module EvenPipe(clk, reset, op, format, unit, rt_addr, ra, rb, rc, imm, reg_writ
 			reg_write_wb <= fw_write_wb[6];
 			
 			if (fp1_write_int == 1) begin			//Replace fw6 with fp1 if possible
-				fw_wb[6] <= fp1_out;
-				fw_addr_wb[6] <= fp1_addr_out;
+				fw_wb[6] <= fp1_int;
+				fw_addr_wb[6] <= fp1_addr_int;
 				fw_write_wb[6] <= fp1_write_int;
 			end
 			else begin
