@@ -1,4 +1,4 @@
-module LocalStore(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb, branch_taken);
+module LocalStore(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb, branch_taken, rt_addr_delay, reg_write_delay);
 	input			clk, reset;
 	
 	//RF/FWD Stage
@@ -17,15 +17,15 @@ module LocalStore(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_write
 	
 	//Internal Signals
 	logic [5:0][0:127]	rt_delay;			//Staging register for calculated values
-	logic [5:0][0:6]	rt_addr_delay;		//Destination register for rt_wb
-	logic [5:0]			reg_write_delay;	//Will rt_wb write to RegTable
+	output logic [5:0][0:6]	rt_addr_delay;		//Destination register for rt_wb
+	output logic [5:0]		reg_write_delay;	//Will rt_wb write to RegTable
 	
 	logic [0:127] mem [0:2047];				//32KB local memory
 	
 	always_comb begin
-		rt_wb = rt_delay[5];
-		rt_addr_wb = rt_addr_delay[5];
-		reg_write_wb = reg_write_delay[5];
+		rt_wb = rt_delay[4];
+		rt_addr_wb = rt_addr_delay[4];
+		reg_write_wb = reg_write_delay[4];
 	end
 	
 	always_ff @(posedge clk) begin
@@ -89,7 +89,7 @@ module LocalStore(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_write
 							rt_delay[0] <= mem[$signed((ra[0:31]) + $signed(imm[8:17]))];
 						end
 						8'b00100100 : begin					//stqd : Store Quadword (d-form)
-							mem[$signed(ra[0:31] + $signed(imm[8:17]))] <= rt_st;
+							mem[($signed(ra[0:31]) + $signed(imm[8:17]))] <= rt_st;
 							reg_write_delay[0] <= 0;
 						end
 						default begin

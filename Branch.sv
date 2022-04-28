@@ -94,11 +94,17 @@ module Branch(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_write, pc
 						branch_delay = 1;
 					end
 					9'b001000010 : begin				//brnz: Branch If Not Zero Word
-						pc_delay = imm[2:17];
+						if (first)
+							pc_delay = pc_in - 2 + $signed(imm[2:17]);
+						else
+							pc_delay = pc_in - 1 + $signed(imm[2:17]);
 						branch_delay = (rt_st[0:31] == 32'h0000) ? 0 : 1;
 					end
 					9'b001000000 : begin				//brz: Branch If Zero Word
-						pc_delay = imm[2:17];
+						if (first)
+							pc_delay = pc_in - 2 + $signed(imm[2:17]);
+						else
+							pc_delay = pc_in - 1 + $signed(imm[2:17]);
 						branch_delay = (rt_st[0:31] == 32'h0000) ? 1 : 0;
 					end
 					default begin

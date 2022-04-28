@@ -7,9 +7,8 @@ add wave -noupdate -expand /tb_InstructionFetch/ins_fetch/instr_d
 add wave -noupdate /tb_InstructionFetch/ins_fetch/decode/first_odd
 add wave -noupdate /tb_InstructionFetch/ins_fetch/stall
 add wave -noupdate /tb_InstructionFetch/ins_fetch/read_enable
-add wave -noupdate -radix decimal /tb_InstructionFetch/ins_fetch/pc
-add wave -noupdate -radix decimal /tb_InstructionFetch/ins_fetch/pc_wb
-add wave -noupdate -radix decimal /tb_InstructionFetch/ins_fetch/pc_check
+add wave -noupdate -radix unsigned /tb_InstructionFetch/ins_fetch/pc
+add wave -noupdate -radix unsigned /tb_InstructionFetch/ins_fetch/pc_wb
 add wave -noupdate -radix hexadecimal /tb_InstructionFetch/ins_fetch/decode/instr_even
 add wave -noupdate -radix hexadecimal /tb_InstructionFetch/ins_fetch/decode/instr_odd
 add wave -noupdate /tb_InstructionFetch/ins_fetch/decode/pipe/branch_taken
@@ -59,7 +58,7 @@ add wave -noupdate /tb_InstructionFetch/ins_fetch/decode/pipe/od/br1/branch_dela
 add wave -noupdate /tb_InstructionFetch/ins_fetch/decode/pipe/rf/registers
 add wave -noupdate /tb_InstructionFetch/ins_fetch/decode/pipe/od/ls1/mem
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {299 ns} 0}
+WaveRestoreCursors {{Cursor 1} {438 ns} 0}
 quietly wave cursor active 1
 configure wave -namecolwidth 404
 configure wave -valuecolwidth 265
@@ -75,4 +74,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {0 ns} {332 ns}
+WaveRestoreZoom {7001 ns} {7333 ns}
