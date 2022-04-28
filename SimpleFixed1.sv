@@ -217,7 +217,9 @@ module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_wri
 				else if (format == 4) begin //RI10-type
 					case (op)
 						8'b00011101 : begin					//ahi rt, ra, imm10 : Add Halfword Immediate
+
 							for (i=0; i<16; i=i+1) begin
+
 								if (($signed(ra[(i * 16) +:16]) + $signed(imm[8:17])) >= max_value_16)
 									rt_delay[0][(i * 16) +:16] = max_value_16;
 								else if (($signed(ra[(i * 16) +:16]) + $signed(imm[8:17])) <= min_value_16)
@@ -234,6 +236,8 @@ module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_wri
 									rt_delay[0][(i * 32) +:32] = min_value_32;
 								else
 									rt_delay[0][(i * 32) +:32] = $signed(ra[(i * 32) +:32]) + $signed(imm[8:17]);
+
+
 							end
 						end
 						8'b00001101 : begin		//sfhi rt, ra, imm10 : Subtract from Halfword Immediate
@@ -506,7 +510,7 @@ module SimpleFixed1(clk, reset, op, format, rt_addr, ra, rb, rt_st, imm, reg_wri
 					case (op)
 						7'b0100001: begin // ila rt, imm18 Immediate Load Address
 							for(int i=0;i<16;i=i+4) begin
-								rt_delay[0][(i*8) +: 32] = rt_st[(i*8) +: 32] | {14'h0000,imm[0:17]};
+								rt_delay[0][(i*8) +: 32] =  {14'h0000,imm[0:17]};
 							end
 						end
 
