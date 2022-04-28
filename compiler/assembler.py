@@ -1,11 +1,13 @@
+from distutils.log import debug
 import sys
 class Assembler:
-    def __init__(self,ins_list_name,input_file,output_file) -> None:
+    def __init__(self,ins_list_name,input_file,output_file,debug) -> None:
         self.ins_list_name =  ins_list_name
         self.ins_opcode_mapping = dict()
         self.opcode_ins_mapping = dict()
         self.output_file = output_file
         self.input_file =  input_file
+        self.debug_level =debug
         self.load_mapping()
 
 
@@ -18,7 +20,6 @@ class Assembler:
                 memonic = ins.split(" ")[0]
                 opcode = opcode.strip()
                 self.ins_opcode_mapping[memonic]=opcode
-
                 if "rt, ra, rb, rc" in ins:
                     self.opcode_ins_mapping[opcode]=[1,ins]
                 elif "rt, ra, rb" in ins:
@@ -35,6 +36,7 @@ class Assembler:
                     self.opcode_ins_mapping[opcode]=[6,ins]
                 else:
                     if "nop" in ins:
+                        print("nop")
                         self.opcode_ins_mapping[opcode]=[7,ins]
                     elif "stop" in ins:
                         self.opcode_ins_mapping[opcode]=[7,ins]
@@ -43,13 +45,20 @@ class Assembler:
         # #print(self.opcode_ins_mapping)
         # #print(self.ins_opcode_mapping)
 
+    def parse_line(self,line):
+        ins = line.strip()
+        ins =ins.split("//")
+        ins = ins[0].strip().split(" ")
+        return ins
 
     def parse_input(self):
+
         with open(self.input_file,'r') as ins_lst, open(self.output_file,'w') as object:
             for line in ins_lst.readlines():
-                line = line.strip()
-                ins = line.split(" ")
+                ins = self.parse_line(line)
                 memonic = ins[0]
+                if "stop" in memonic:
+                    break
                 #print(memonic)
                 opcode = self.ins_opcode_mapping[memonic]
                 #print(opcode)
@@ -58,11 +67,32 @@ class Assembler:
                 binary = self.compute(format,opcode,ins)
                 object.write(binary+"\n")
 
+    def parse_input_1(self):
+        with open(self.input_file,'r') as ins_lst, open(self.output_file,'w') as object,open("debug.out",'w') as d_object:
+            for line in ins_lst.readlines():
+
+                ins = self.parse_line(line)
+                memonic = ins[0]
+                if "stop" in memonic:
+                    break
+                #print(memonic)
+                opcode = self.ins_opcode_mapping[memonic]
+                print(opcode)
+                format = self.opcode_ins_mapping[opcode]
+                # print("format ",format)
+                binary = self.compute(format,opcode,ins)
+                object.write(binary+"\n")
+                if self.debug_level==2:
+                    o_hex = '0x{0:0{1}X}'.format(int(binary,2),8)
+                    d_object.write(str(binary)+"\t"+o_hex+"\t"+line)
+                else:
+                    d_object.write(str(binary)+"\t"+line)
+
 
     def compute(self,format,opcode,ins):
         ins_binary = "".zfill(32)
-        #print(ins_binary,len(ins_binary))
-        # print("ins {}".format(ins))
+        print(format,ins_binary,len(ins_binary))
+        print("ins {}".format(ins))
         if format[0] == 0:
             # opcode rt ra rb
             # op[0-10]rb[11-17]ra[18-24]rt[25-31]
@@ -93,27 +123,27 @@ class Assembler:
         elif format[0] == 2:
             # opcode rt,ra,imm7
             # op[0-10]imm7[11-17]ra[18-24]rt[25-31]
-
+            mask = 0b1111111
             rt = bin(int(ins[1])).replace("0b","")
             ra = bin(int(ins[2])).replace("0b","")
-            imm7 = bin(int(ins[3])).replace("0b","")
+            imm7 = bin(int(ins[3]) & mask).replace("0b","")
 
             rt = self.fill(rt,7)
             ra = self.fill(ra,7)
             imm7 = self.fill(imm7,7)
-            ins_binary = opcode+rt+ra+imm7
+            ins_binary = opcode+imm7+ra+rt
 
         elif format[0] == 3:
             # opcode rt,ra,imm8
             # op[0-9]imm8[10-17]ra[18-24]rt[25-31]
-
+            mask = 0b11111111
             rt = bin(int(ins[1])).replace("0b","")
             ra = bin(int(ins[2])).replace("0b","")
-            imm8 = bin(int(ins[3])).replace("0b","")
+            imm8 = bin(int(ins[3]) & mask).replace("0b","")
             rt = self.fill(rt,7)
             ra = self.fill(ra,7)
             imm8 = self.fill(imm8,8)
-            ins_binary = opcode+rt+ra+imm8
+            ins_binary = opcode+imm8+ra+rt
 
 
         elif format[0] == 4:
@@ -121,6 +151,8 @@ class Assembler:
             # op[0-7]imm10[8-17]ra[18-24]rt[25-31]
             rt = bin(int(ins[1])).replace("0b","")
             rt = self.fill(rt,7)
+            mask = 0b1111111111
+
             if '(' in format[1]:
                 # opcode rt, symbol(ra)
                 imm10 = ins[2].split('(')[0]
@@ -130,33 +162,37 @@ class Assembler:
                 imm10 = ins[3]
                 ra = ins[2]
 
-            #print(imm10,ra)
-            imm10 = bin(int(imm10)).replace("0b","")
+            # print(imm10,ra)
+            imm10 = bin(int(imm10)  & mask).replace("0b","")
             imm10 = self.fill(imm10,10)
 
             ra = bin(int(ra)).replace("0b","")
             ra = self.fill(ra,7)
             ins_binary = opcode+imm10+ra+rt
         elif format[0] == 5:
-
+            print(ins)
+            mask = 0b1111111111111111
             if len(ins)==3:
                 rt = bin(int(ins[1])).replace("0b","")
-                imm16 = bin(int(ins[2])).replace("0b","")
+                imm16 = bin(int(ins[2]) & mask).replace("0b","")
             else:
                 rt="0"
-                imm16 = bin(int(ins[1])).replace("0b","")
+                imm16 = bin(int(ins[1]) & mask ).replace("0b","")
+
+            print(rt,imm16)
             rt = self.fill(rt,7)
             imm16 = self.fill(imm16,16)
-
+            print(rt,imm16)
             ins_binary = opcode+imm16+rt
         elif format[0] == 6:
             # opcode rt,value
             # op[0-8]imm16[9-24]rt[25-31]
-            rt = bin(int(ins[1])).replace("0b","")
+            mask = 0b111111111111111111
+            rt = bin(int(ins[1]) & mask).replace("0b","")
             rt = self.fill(rt,7)
 
-            imm18 = bin(int(ins[2])).replace("0b","")
-            imm18 = self.fill(imm18,18)
+            imm18 = bin(int(ins[2]) ).replace("0b","")
+            imm18 = self.fill(imm18 ,18)
             ins_binary = opcode+imm18+rt
         else:
             ins_binary = opcode + self.fill("",32-len(opcode))
@@ -183,11 +219,29 @@ if len(sys.argv) ==1:
     sys.exit(0)
 input_file_name = sys.argv[1]
 output_file_name = "out"
-if len(sys.argv) > 3 and sys.argv[2] =='-o':
-    output_file_name = sys.argv[3]
+debug = 0
+print(sys.argv)
 
+print(sys.argv)
+for i in range(1,len(sys.argv)):
+    print("test ",sys.argv[i])
+    if sys.argv[i] =='-o':
+        print("afdasd")
+        output_file_name = sys.argv[i+1]
+        i=i+1
+
+    if sys.argv[i] =='-d':
+        debug=int(sys.argv[i+1])
+        i=i+1
+
+print(" fda ",input_file_name)
+print("dfd ",output_file_name)
 asm = Assembler(ins_list_name="instructions.lst", input_file=input_file_name,
-                output_file=output_file_name)
+                output_file=output_file_name,debug=debug)
 
-
-asm.parse_input()
+print(debug)
+if debug==0:
+    asm.parse_input()
+elif debug>=1:
+    print("debug ")
+    asm.parse_input_1()

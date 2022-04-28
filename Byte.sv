@@ -1,4 +1,4 @@
-module Byte(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb);
+module Byte(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, rt_addr_wb, reg_write_wb, branch_taken, rt_addr_delay, reg_write_delay);
 	input			clk, reset;
 	
 	//RF/FWD Stage
@@ -8,6 +8,7 @@ module Byte(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, rt_a
 	input [0:127]	ra, rb;			//Values of source registers
 	input [0:17]	imm;			//Immediate value, truncated based on format
 	input			reg_write;		//Will current instr write to RegTable
+	input			branch_taken;	//Was branch taken?
 	
 	//WB Stage
 	output logic [0:127]	rt_wb;			//Output value of Stage 3
@@ -16,15 +17,15 @@ module Byte(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, rt_a
 	
 	//Internal Signals
 	logic [3:0][0:127]	rt_delay;			//Staging register for calculated values
-	logic [3:0][0:6]	rt_addr_delay;		//Destination register for rt_wb
-	logic [3:0]			reg_write_delay;	//Will rt_wb write to RegTable
+	output logic [3:0][0:6]	rt_addr_delay;		//Destination register for rt_wb
+	output logic [3:0]		reg_write_delay;	//Will rt_wb write to RegTable
 	
 	logic [3:0]			temp;				//Incrementing counter
 	
 	always_comb begin
-		rt_wb = rt_delay[3];
-		rt_addr_wb = rt_addr_delay[3];
-		reg_write_wb = reg_write_delay[3];
+		rt_wb = rt_delay[2];
+		rt_addr_wb = rt_addr_delay[2];
+		reg_write_wb = reg_write_delay[2];
 	end
 	
 	always_ff @(posedge clk) begin
@@ -58,7 +59,12 @@ module Byte(clk, reset, op, format, rt_addr, ra, rb, imm, reg_write, rt_wb, rt_a
 			else begin
 				rt_addr_delay[0] <= rt_addr;
 				reg_write_delay[0] <= reg_write;
-				if (format == 0) begin
+				if (branch_taken) begin
+					rt_delay[0] <= 0;
+					rt_addr_delay[0] <= 0;
+					reg_write_delay[0] <= 0;
+				end
+				else if (format == 0) begin
 					case (op)
 						11'b01010110100 : begin					//cntb : Count Ones in Bytes
 							for (int i=0; i<16; i=i+1) begin
